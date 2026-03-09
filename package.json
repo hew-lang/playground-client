@@ -1,0 +1,52 @@
+{
+  "name": "@hew-lang/playground-client",
+  "version": "0.1.11",
+  "description": "TypeScript client for the Hew Playground API.",
+  "author": "Stephen Olesen",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/hew-playground-client.js",
+  "types": "./dist/hew-playground-client.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/hew-playground-client.d.ts",
+      "import": "./dist/hew-playground-client.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "hew-playground-client.ts",
+    "openapi.json"
+  ],
+  "scripts": {
+    "clean:sdk": "rm -rf dist",
+    "build:sdk": "tsc -p tsconfig.sdk.json",
+    "typecheck:sdk": "tsc --noEmit -p tsconfig.sdk.json",
+    "typecheck:sdk:consumer": "npm run build:sdk && tsc --noEmit -p tsconfig.sdk-consumer.json",
+    "test:sdk": "npm run build:sdk && node --test hew-playground-client.test.mjs && tsc --noEmit -p tsconfig.sdk-consumer.json",
+    "prepack": "npm run clean:sdk && npm run build:sdk"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hew-lang/playground-client.git"
+  },
+  "homepage": "https://github.com/hew-lang/playground-client#readme",
+  "bugs": {
+    "url": "https://github.com/hew-lang/playground-client/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "hew",
+    "playground",
+    "typescript",
+    "sdk",
+    "api-client"
+  ],
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

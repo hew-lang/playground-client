@@ -1,0 +1,61 @@
+name: Publish Playground Client SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run packaging checks without publishing to npm"
+        required: true
+        default: true
+        type: boolean
+      registry_url:
+        description: "Registry URL to publish to"
+        required: true
+        default: "https://registry.npmjs.org/"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish-sdk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: ${{ inputs.registry_url }}
+
+      - name: Show package metadata
+        run: npm pkg get name version
+
+      - name: Verify registry
+        run: npm ping --registry "${{ inputs.registry_url }}"
+
+      - name: Install package tooling
+        run: npm install --no-package-lock
+
+      - name: Validate SDK package
+        run: |
+          npm run typecheck:sdk
+          npm run test:sdk
+          npm pack --ignore-scripts --dry-run
+
+      - name: Dry-run publish
+        if: ${{ inputs.dry_run }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --dry-run --registry "${{ inputs.registry_url }}"
+
+      - name: Publish to npm
+        if: ${{ !inputs.dry_run }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --registry "${{ inputs.registry_url }}"

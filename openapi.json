@@ -1,0 +1,497 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Hew Playground API",
+    "version": "0.1.9",
+    "summary": "HTTP API for compiling, running, listing, and sharing Hew playground programs.",
+    "description": "The Hew playground exposes a small JSON-over-HTTP API.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3030",
+      "description": "Default local development server"
+    },
+    {
+      "url": "https://livecode-v1.hew.sh",
+      "description": "Default live server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "health",
+      "description": "Liveness and health checks."
+    },
+    {
+      "name": "execution",
+      "description": "Compile and run Hew programs."
+    },
+    {
+      "name": "examples",
+      "description": "Built-in example programs baked into the binary."
+    },
+    {
+      "name": "sharing",
+      "description": "Persistent snippet storage and retrieval."
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "operationId": "getHealth",
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "The server is healthy.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "const": "ok"
+                },
+                "examples": {
+                  "ok": {
+                    "value": "ok"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/run": {
+      "post": {
+        "tags": [
+          "execution"
+        ],
+        "operationId": "runCode",
+        "summary": "Compile and run Hew source code",
+        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunRequest"
+              },
+              "examples": {
+                "helloWorld": {
+                  "value": {
+                    "source": "fn main() { println(\"hello\"); }"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Compile/run completed. `success` can still be false for compile errors or signal kills. A non-zero program return value is reported in `exit_code` while `success` remains true.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "success": true,
+                      "stdout": "hello\n",
+                      "stderr": "",
+                      "elapsed_ms": 18
+                    }
+                  },
+                  "compileError": {
+                    "value": {
+                      "success": false,
+                      "stdout": "",
+                      "stderr": "",
+                      "compile_error": "error: parse error at line 1",
+                      "elapsed_ms": 12
+                    }
+                  },
+                  "nonZeroExit": {
+                    "value": {
+                      "success": true,
+                      "stdout": "",
+                      "stderr": "",
+                      "exit_code": 2,
+                      "elapsed_ms": 4
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The JSON body parsed successfully, but the `source` field exceeded 64 KiB. Malformed JSON may also be rejected by Axum before the handler runs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                },
+                "examples": {
+                  "sourceTooLarge": {
+                    "value": {
+                      "success": false,
+                      "stdout": "",
+                      "stderr": "Source code too large (65537 bytes, max 65536)",
+                      "elapsed_ms": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The total HTTP request body exceeded the Axum body limit before handler execution."
+          },
+          "415": {
+            "description": "The request body was not sent as JSON."
+          },
+          "429": {
+            "description": "The per-IP CPU budget or the concurrent-run limit was exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                },
+                "examples": {
+                  "rateLimit": {
+                    "value": {
+                      "success": false,
+                      "stdout": "",
+                      "stderr": "Rate limit exceeded, please wait before trying again",
+                      "elapsed_ms": 0
+                    }
+                  },
+                  "concurrencyLimit": {
+                    "value": {
+                      "success": false,
+                      "stdout": "",
+                      "stderr": "Too many concurrent requests, please try again",
+                      "elapsed_ms": 0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal sandbox or process-launch error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/examples": {
+      "get": {
+        "tags": [
+          "examples"
+        ],
+        "operationId": "listExamples",
+        "summary": "List built-in example programs",
+        "responses": {
+          "200": {
+            "description": "Examples baked into the binary at build time.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Example"
+                  }
+                },
+                "examples": {
+                  "exampleList": {
+                    "value": [
+                      {
+                        "name": "Hello, world",
+                        "description": "A minimal program",
+                        "category": "Basics",
+                        "source": "fn main() { println(\"hello\"); }"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/share": {
+      "post": {
+        "tags": [
+          "sharing"
+        ],
+        "operationId": "createShare",
+        "summary": "Store a snippet and return its share ID",
+        "description": "Share ID of the stored snippet.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareRequest"
+              },
+              "examples": {
+                "shareSource": {
+                  "value": {
+                    "source": "fn main() { println(1); }"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Snippet stored successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareResponse"
+                },
+                "examples": {
+                  "created": {
+                    "value": {
+                      "id": "8d7b8d8bdb9f6939"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The JSON body parsed successfully, but the `source` field exceeded 64 KiB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareResponse"
+                },
+                "examples": {
+                  "sourceTooLarge": {
+                    "value": {
+                      "id": ""
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The total HTTP request body exceeded the Axum body limit before handler execution."
+          },
+          "415": {
+            "description": "The request body was not sent as JSON."
+          }
+        }
+      }
+    },
+    "/api/share/{id}": {
+      "get": {
+        "tags": [
+          "sharing"
+        ],
+        "operationId": "getShare",
+        "summary": "Fetch a previously shared snippet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Snippet identifier returned by `POST /api/share`.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Snippet found.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareGetResponse"
+                },
+                "examples": {
+                  "found": {
+                    "value": {
+                      "source": "fn main() { println(1); }"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No snippet exists for the supplied ID.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing": {
+                    "value": {
+                      "error": "snippet not found"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "RunRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Hew source code. The handler rejects strings larger than 64 KiB."
+          }
+        }
+      },
+      "RunResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "success",
+          "stdout",
+          "stderr",
+          "elapsed_ms"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "True when `hew run` completed normally. A non-zero program return value still counts as success."
+          },
+          "stdout": {
+            "type": "string",
+            "description": "Captured standard output, truncated after 64 KiB."
+          },
+          "stderr": {
+            "type": "string",
+            "description": "Captured standard error with internal `[hew-pprof]` lines removed."
+          },
+          "compile_error": {
+            "type": "string",
+            "description": "Compiler stderr, present only when the Hew compiler exits with its dedicated compile-error code."
+          },
+          "exit_code": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Program return value when the program ran to completion and returned a non-zero exit code."
+          },
+          "elapsed_ms": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "End-to-end wall-clock duration in milliseconds."
+          },
+          "profile": {
+            "type": "string",
+            "description": "Profiler output from `hew-profile.txt`, when available."
+          }
+        }
+      },
+      "Example": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "description",
+          "category",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "description": "Title-cased category derived from the example name."
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      },
+      "ShareRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Hew source code to store."
+          }
+        }
+      },
+      "ShareResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "On success, a 16-character lowercase hexadecimal snippet ID. On oversized requests, the handler returns an empty string with HTTP 400."
+          }
+        }
+      },
+      "ShareGetResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source"
+        ],
+        "properties": {
+          "source": {
+            "type": "string"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
