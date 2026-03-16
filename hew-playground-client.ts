@@ -1,5 +1,8 @@
 export interface RunRequest {
   source: string;
+  /** Request a specific compiler version (e.g. `"0.2.0"`). Overrides the
+   *  client-wide `compilerVersion` and the `X-Hew-Version` header. */
+  compiler_version?: string;
 }
 
 export interface RunResponse {
@@ -10,6 +13,8 @@ export interface RunResponse {
   exit_code?: number;
   elapsed_ms: number;
   profile?: string;
+  /** The compiler version that was used for this run. */
+  compiler_version?: string;
 }
 
 export interface Example {
@@ -33,6 +38,11 @@ export interface ShareGetResponse {
 
 export interface ErrorResponse {
   error: string;
+}
+
+export interface VersionsResponse {
+  default_version: string;
+  available_versions: string[];
 }
 
 export interface PlaygroundHeadersLike {
@@ -71,6 +81,10 @@ export interface PlaygroundClientOptions {
   baseUrl: string;
   fetch?: PlaygroundFetch;
   headers?: PlaygroundHeadersInit;
+  /** Default compiler version sent as `compiler_version` in the request body
+   *  on every `run()` call. Can be overridden per-request via the
+   *  `compiler_version` field in `RunRequest`. */
+  compilerVersion?: string;
 }
 
 export class PlaygroundApiError<TBody = unknown> extends Error {
@@ -97,12 +111,14 @@ export class HewPlaygroundClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: PlaygroundFetch;
   private readonly defaultHeaders?: PlaygroundHeadersInit;
+  private readonly compilerVersion?: string;
 
   constructor(options: string | PlaygroundClientOptions) {
     const resolved = typeof options === 'string' ? { baseUrl: options } : options;
     this.baseUrl = resolved.baseUrl;
     this.fetchImpl = resolved.fetch ?? resolveFetch();
     this.defaultHeaders = resolved.headers;
+    this.compilerVersion = resolved.compilerVersion;
   }
 
   async health(): Promise<string> {
@@ -118,9 +134,16 @@ export class HewPlaygroundClient {
   }
 
   async run(request: RunRequest | string): Promise<RunResponse> {
+    const body = normalizeRunRequest(request, this.compilerVersion);
     return this.requestJson<RunResponse>('POST /api/run', '/api/run', {
       method: 'POST',
-      body: JSON.stringify(normalizeSource(request)),
+      body: JSON.stringify(body),
+    });
+  }
+
+  async listVersions(): Promise<VersionsResponse> {
+    return this.requestJson<VersionsResponse>('GET /api/versions', '/api/versions', {
+      method: 'GET',
     });
   }
 
@@ -188,6 +211,22 @@ function normalizeSource(request: RunRequest | ShareRequest | string): { source:
     return { source: request };
   }
   return { source: request.source };
+}
+
+function normalizeRunRequest(
+  request: RunRequest | string,
+  clientVersion?: string,
+): { source: string; compiler_version?: string } {
+  if (typeof request === 'string') {
+    return clientVersion ? { source: request, compiler_version: clientVersion } : { source: request };
+  }
+  const body: { source: string; compiler_version?: string } = { source: request.source };
+  if (request.compiler_version) {
+    body.compiler_version = request.compiler_version;
+  } else if (clientVersion) {
+    body.compiler_version = clientVersion;
+  }
+  return body;
 }
 
 function mergeHeaders(...headerSets: Array<PlaygroundHeadersInit | Record<string, string> | undefined>): Record<string, string> {
