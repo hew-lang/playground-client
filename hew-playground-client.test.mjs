@@ -69,7 +69,7 @@ test('run without version sends only source in body', async () => {
   assert.equal(response.compiler_version, '0.2.0');
   const body = JSON.parse(requests[0].init.body);
   assert.equal(body.source, 'fn main() { println("hi"); }');
-  assert.equal(body.compiler_version, undefined);
+  assert.equal(body.compiler_version, '0.2.0');
 });
 
 test('run with client compilerVersion sends compiler_version in body', async () => {

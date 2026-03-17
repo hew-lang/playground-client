@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Hew Playground API",
-    "version": "0.1.9",
+    "version": "0.2.0",
     "summary": "HTTP API for compiling, running, listing, and sharing Hew playground programs.",
-    "description": "The Hew playground exposes a small JSON-over-HTTP API.",
+    "description": "The Hew playground exposes a small JSON-over-HTTP API. Supports multiple compiler versions (v0.2.0 default, v0.1.9 legacy).",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
@@ -66,6 +66,36 @@
         }
       }
     },
+    "/api/versions": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "operationId": "getVersions",
+        "summary": "List available compiler versions",
+        "description": "Returns the default compiler version and all versions available on this server.",
+        "responses": {
+          "200": {
+            "description": "Available compiler versions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VersionsResponse"
+                },
+                "examples": {
+                  "multiVersion": {
+                    "value": {
+                      "default_version": "0.2.0",
+                      "available_versions": ["0.2.0", "0.1.9"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/run": {
       "post": {
         "tags": [
@@ -73,7 +103,19 @@
         ],
         "operationId": "runCode",
         "summary": "Compile and run Hew source code",
-        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes.",
+        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific Hew compiler version (defaults to 0.2.0).",
+        "parameters": [
+          {
+            "name": "X-Hew-Version",
+            "in": "header",
+            "required": false,
+            "description": "Alternative way to specify compiler version. The `compiler_version` field in the request body takes priority.",
+            "schema": {
+              "type": "string",
+              "enum": ["0.2.0", "0.1.9"]
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -85,6 +127,18 @@
                 "helloWorld": {
                   "value": {
                     "source": "fn main() { println(\"hello\"); }"
+                  }
+                },
+                "withVersion": {
+                  "value": {
+                    "source": "fn main() { println(\"hello\"); }",
+                    "compiler_version": "0.2.0"
+                  }
+                },
+                "legacyVersion": {
+                  "value": {
+                    "source": "fn main() { println(\"hello\"); }",
+                    "compiler_version": "0.1.9"
                   }
                 }
               }
@@ -105,7 +159,8 @@
                       "success": true,
                       "stdout": "hello\n",
                       "stderr": "",
-                      "elapsed_ms": 18
+                      "elapsed_ms": 18,
+                      "compiler_version": "0.2.0"
                     }
                   },
                   "compileError": {
@@ -114,7 +169,8 @@
                       "stdout": "",
                       "stderr": "",
                       "compile_error": "error: parse error at line 1",
-                      "elapsed_ms": 12
+                      "elapsed_ms": 12,
+                      "compiler_version": "0.2.0"
                     }
                   },
                   "nonZeroExit": {
@@ -123,7 +179,8 @@
                       "stdout": "",
                       "stderr": "",
                       "exit_code": 2,
-                      "elapsed_ms": 4
+                      "elapsed_ms": 4,
+                      "compiler_version": "0.2.0"
                     }
                   }
                 }
@@ -371,6 +428,12 @@
           "source": {
             "type": "string",
             "description": "Hew source code. The handler rejects strings larger than 64 KiB."
+          },
+          "compiler_version": {
+            "type": "string",
+            "description": "Compiler version to use. Supported values: \"0.2.0\" (default), \"0.1.9\" (legacy). When absent, defaults to \"0.2.0\". Can also be set via the X-Hew-Version request header.",
+            "enum": ["0.2.0", "0.1.9"],
+            "default": "0.2.0"
           }
         }
       },
@@ -381,7 +444,8 @@
           "success",
           "stdout",
           "stderr",
-          "elapsed_ms"
+          "elapsed_ms",
+          "compiler_version"
         ],
         "properties": {
           "success": {
@@ -414,6 +478,10 @@
           "profile": {
             "type": "string",
             "description": "Profiler output from `hew-profile.txt`, when available."
+          },
+          "compiler_version": {
+            "type": "string",
+            "description": "The compiler version that was used for this run (e.g. \"0.2.0\")."
           }
         }
       },
@@ -489,6 +557,27 @@
         "properties": {
           "error": {
             "type": "string"
+          }
+        }
+      },
+      "VersionsResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "default_version",
+          "available_versions"
+        ],
+        "properties": {
+          "default_version": {
+            "type": "string",
+            "description": "The default compiler version used when none is specified."
+          },
+          "available_versions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "All compiler versions available on this server."
           }
         }
       }
