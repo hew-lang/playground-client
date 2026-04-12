@@ -3,6 +3,8 @@ export interface RunRequest {
   /** Request a specific compiler version (e.g. `"0.2.0"`). Overrides the
    *  client-wide `compilerVersion` and the `X-Hew-Version` header. */
   compiler_version?: string;
+  /** Execution backend. Defaults to `"native"` on the server when absent. */
+  execution_mode?: 'native' | 'wasm';
 }
 
 export interface RunResponse {
@@ -216,15 +218,18 @@ function normalizeSource(request: RunRequest | ShareRequest | string): { source:
 function normalizeRunRequest(
   request: RunRequest | string,
   clientVersion?: string,
-): { source: string; compiler_version?: string } {
+): { source: string; compiler_version?: string; execution_mode?: 'native' | 'wasm' } {
   if (typeof request === 'string') {
     return clientVersion ? { source: request, compiler_version: clientVersion } : { source: request };
   }
-  const body: { source: string; compiler_version?: string } = { source: request.source };
+  const body: { source: string; compiler_version?: string; execution_mode?: 'native' | 'wasm' } = { source: request.source };
   if (request.compiler_version) {
     body.compiler_version = request.compiler_version;
   } else if (clientVersion) {
     body.compiler_version = clientVersion;
+  }
+  if (request.execution_mode) {
+    body.execution_mode = request.execution_mode;
   }
   return body;
 }
