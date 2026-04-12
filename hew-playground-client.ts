@@ -228,7 +228,7 @@ function normalizeRunRequest(
   } else if (clientVersion) {
     body.compiler_version = clientVersion;
   }
-  if (request.execution_mode) {
+  if (request.execution_mode !== undefined) {
     body.execution_mode = request.execution_mode;
   }
   return body;

@@ -154,6 +154,21 @@ test('throws PlaygroundApiError with the parsed JSON error body', async () => {
   );
 });
 
+test('run with execution_mode native sends it in request body', async () => {
+  const requests = [];
+  const client = new HewPlaygroundClient({
+    baseUrl: 'https://playground.example',
+    fetch: async (url, init) => {
+      requests.push({ url, init });
+      return mockJsonResponse({ success: true, stdout: '', stderr: '', elapsed_ms: 5, compiler_version: '0.2.1' });
+    },
+  });
+
+  await client.run({ source: 'fn main() {}', execution_mode: 'native' });
+  const body = JSON.parse(requests[0].init.body);
+  assert.equal(body.execution_mode, 'native');
+});
+
 test('run with execution_mode wasm sends it in request body', async () => {
   const requests = [];
   const client = new HewPlaygroundClient({
