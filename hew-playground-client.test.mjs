@@ -55,21 +55,21 @@ test('supports custom fetch without a global Headers constructor', async () => {
   }
 });
 
-test('run without version sends only source in body', async () => {
+test('run without version sends package default version in body', async () => {
   const requests = [];
   const client = new HewPlaygroundClient({
     baseUrl: 'https://playground.example',
     fetch: async (url, init) => {
       requests.push({ url, init });
-      return mockJsonResponse({ success: true, stdout: 'hi\n', stderr: '', elapsed_ms: 50, compiler_version: '0.2.0' });
+      return mockJsonResponse({ success: true, stdout: 'hi\n', stderr: '', elapsed_ms: 50, compiler_version: '0.5.0' });
     },
   });
 
   const response = await client.run('fn main() { println("hi"); }');
-  assert.equal(response.compiler_version, '0.2.0');
+  assert.equal(response.compiler_version, '0.5.0');
   const body = JSON.parse(requests[0].init.body);
   assert.equal(body.source, 'fn main() { println("hi"); }');
-  assert.equal(body.compiler_version, '0.2.0');
+  assert.equal(body.compiler_version, '0.5.0');
 });
 
 test('run with client compilerVersion sends compiler_version in body', async () => {
