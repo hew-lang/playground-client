@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Hew Playground API",
-    "version": "0.2.0",
+    "version": "0.5.0",
     "summary": "HTTP API for compiling, running, listing, and sharing Hew playground programs.",
-    "description": "The Hew playground exposes a small JSON-over-HTTP API. Supports multiple compiler versions (v0.2.0 default, v0.1.9 legacy).",
+    "description": "The Hew playground exposes a small JSON-over-HTTP API. Supports multiple compiler versions (v0.5.0 default, v0.4.0 retained, v0.3.0 and v0.2.0 legacy).",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
@@ -85,8 +85,13 @@
                 "examples": {
                   "multiVersion": {
                     "value": {
-                      "default_version": "0.2.0",
-                      "available_versions": ["0.2.0", "0.1.9"]
+                      "default_version": "0.5.0",
+                      "available_versions": [
+                        "0.5.0",
+                        "0.4.0",
+                        "0.3.0",
+                        "0.2.0"
+                      ]
                     }
                   }
                 }
@@ -103,7 +108,7 @@
         ],
         "operationId": "runCode",
         "summary": "Compile and run Hew source code",
-        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific Hew compiler version (defaults to 0.2.0).",
+        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific Hew compiler version (defaults to 0.5.0).",
         "parameters": [
           {
             "name": "X-Hew-Version",
@@ -112,7 +117,12 @@
             "description": "Alternative way to specify compiler version. The `compiler_version` field in the request body takes priority.",
             "schema": {
               "type": "string",
-              "enum": ["0.2.0", "0.1.9"]
+              "enum": [
+                "0.5.0",
+                "0.4.0",
+                "0.3.0",
+                "0.2.0"
+              ]
             }
           }
         ],
@@ -132,13 +142,25 @@
                 "withVersion": {
                   "value": {
                     "source": "fn main() { println(\"hello\"); }",
-                    "compiler_version": "0.2.0"
+                    "compiler_version": "0.5.0"
+                  }
+                },
+                "withWasmExecution": {
+                  "value": {
+                    "source": "fn main() { println(\"hello\"); }",
+                    "execution_mode": "wasm"
                   }
                 },
                 "legacyVersion": {
                   "value": {
                     "source": "fn main() { println(\"hello\"); }",
-                    "compiler_version": "0.1.9"
+                    "compiler_version": "0.2.0"
+                  }
+                },
+                "retainedVersion": {
+                  "value": {
+                    "source": "fn main() { println(\"hello\"); }",
+                    "compiler_version": "0.3.0"
                   }
                 }
               }
@@ -160,7 +182,7 @@
                       "stdout": "hello\n",
                       "stderr": "",
                       "elapsed_ms": 18,
-                      "compiler_version": "0.2.0"
+                      "compiler_version": "0.5.0"
                     }
                   },
                   "compileError": {
@@ -170,7 +192,7 @@
                       "stderr": "",
                       "compile_error": "error: parse error at line 1",
                       "elapsed_ms": 12,
-                      "compiler_version": "0.2.0"
+                      "compiler_version": "0.5.0"
                     }
                   },
                   "nonZeroExit": {
@@ -180,7 +202,7 @@
                       "stderr": "",
                       "exit_code": 2,
                       "elapsed_ms": 4,
-                      "compiler_version": "0.2.0"
+                      "compiler_version": "0.5.0"
                     }
                   }
                 }
@@ -279,7 +301,11 @@
                         "name": "Hello, world",
                         "description": "A minimal program",
                         "category": "Basics",
-                        "source": "fn main() { println(\"hello\"); }"
+                        "source": "fn main() { println(\"hello\"); }",
+                        "capabilities": {
+                          "browser": "analysis-only",
+                          "wasi": "runnable"
+                        }
                       }
                     ]
                   }
@@ -355,6 +381,12 @@
           },
           "415": {
             "description": "The request body was not sent as JSON."
+          },
+          "429": {
+            "description": "Per-IP share rate limit exhausted; retry later. Body shape matches 400 (`{ \"id\": \"\" }`) — distinguish by status."
+          },
+          "503": {
+            "description": "Share store at capacity; snippet rejected. Body shape matches 400 (`{ \"id\": \"\" }`) — distinguish by status."
           }
         }
       }
@@ -431,9 +463,23 @@
           },
           "compiler_version": {
             "type": "string",
-            "description": "Compiler version to use. Supported values: \"0.2.0\" (default), \"0.1.9\" (legacy). When absent, defaults to \"0.2.0\". Can also be set via the X-Hew-Version request header.",
-            "enum": ["0.2.0", "0.1.9"],
-            "default": "0.2.0"
+            "description": "Compiler version to use. Defaults to `0.5.0` when omitted.",
+            "enum": [
+              "0.5.0",
+              "0.4.0",
+              "0.3.0",
+              "0.2.0"
+            ],
+            "default": "0.5.0"
+          },
+          "execution_mode": {
+            "type": "string",
+            "enum": [
+              "native",
+              "wasm"
+            ],
+            "default": "native",
+            "description": "Execution lane. \"native\" (default) compiles and runs as a subprocess. \"wasm\" compiles to wasm32-wasip1 and runs in-process via wasmtime (requires HEW_WASM_EXEC_ENABLED=1 on the server)."
           }
         }
       },
@@ -481,7 +527,8 @@
           },
           "compiler_version": {
             "type": "string",
-            "description": "The compiler version that was used for this run (e.g. \"0.2.0\")."
+            "description": "The compiler version that was used for this run (e.g. \"0.5.0\").",
+            "example": "0.5.0"
           }
         }
       },
@@ -492,7 +539,8 @@
           "name",
           "description",
           "category",
-          "source"
+          "source",
+          "capabilities"
         ],
         "properties": {
           "name": {
@@ -507,6 +555,35 @@
           },
           "source": {
             "type": "string"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/ExampleCapabilities"
+          }
+        }
+      },
+      "ExampleCapabilities": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Execution capability tier for this example.",
+        "required": [
+          "browser",
+          "wasi"
+        ],
+        "properties": {
+          "browser": {
+            "type": "string",
+            "enum": [
+              "analysis-only"
+            ],
+            "description": "Browser capability. Always 'analysis-only' because the browser lane exposes analysis only."
+          },
+          "wasi": {
+            "type": "string",
+            "enum": [
+              "runnable",
+              "unsupported"
+            ],
+            "description": "WASI capability. 'runnable' executes under wasm32-wasi; 'unsupported' hits a known unsupported WASM path."
           }
         }
       },
@@ -570,14 +647,21 @@
         "properties": {
           "default_version": {
             "type": "string",
-            "description": "The default compiler version used when none is specified."
+            "description": "The default compiler version used when none is specified.",
+            "example": "0.5.0"
           },
           "available_versions": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "All compiler versions available on this server."
+            "description": "All compiler versions available on this server.",
+            "example": [
+              "0.5.0",
+              "0.4.0",
+              "0.3.0",
+              "0.2.0"
+            ]
           }
         }
       }

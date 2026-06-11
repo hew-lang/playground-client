@@ -38,6 +38,33 @@ const client = new HewPlaygroundClient({
 });
 ```
 
+## Compiler version selection
+
+Every `run()` sends `compiler_version` in the request body. The client
+defaults to `'0.5.0'`; override it client-wide or per request, or pass
+`null` to omit the field and let the server pick its default version:
+
+```ts
+// Pin a version client-wide
+const pinned = new HewPlaygroundClient({
+  baseUrl: 'https://livecode-v1.hew.sh',
+  compilerVersion: '0.4.0',
+});
+
+// Let the server decide (tracks the server's default as it advances)
+const tracking = new HewPlaygroundClient({
+  baseUrl: 'https://livecode-v1.hew.sh',
+  compilerVersion: null,
+});
+
+// Per-request override
+await pinned.run({ source: 'fn main() {}', compiler_version: '0.5.0' });
+```
+
+Examples returned by `listExamples()` carry a `capabilities` object
+describing their execution tier (`browser` is always `'analysis-only'`;
+`wasi` is `'runnable'` or `'unsupported'`).
+
 ### Constructor options
 
 | Option | Type | Description |

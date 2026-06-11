@@ -183,3 +183,32 @@ test('run without execution_mode omits the field from request body', async () =>
   const body = JSON.parse(requests[0].init.body);
   assert.ok(!('execution_mode' in body), 'execution_mode must be absent when not provided');
 });
+
+test('compilerVersion: null omits compiler_version (server default)', async () => {
+  const requests = [];
+  const client = new HewPlaygroundClient({
+    baseUrl: 'https://playground.example',
+    compilerVersion: null,
+    fetch: async (input, init) => {
+      requests.push({ input, init });
+      return mockJsonResponse({ success: true, stdout: '', stderr: '', elapsed_ms: 5, compiler_version: '0.5.0' });
+    },
+  });
+  await client.run('fn main() {}');
+  const body = JSON.parse(requests[0].init.body);
+  assert.equal('compiler_version' in body, false);
+});
+
+test('default client sends compiler_version 0.5.0', async () => {
+  const requests = [];
+  const client = new HewPlaygroundClient({
+    baseUrl: 'https://playground.example',
+    fetch: async (input, init) => {
+      requests.push({ input, init });
+      return mockJsonResponse({ success: true, stdout: '', stderr: '', elapsed_ms: 5 });
+    },
+  });
+  await client.run('fn main() {}');
+  const body = JSON.parse(requests[0].init.body);
+  assert.equal(body.compiler_version, '0.5.0');
+});

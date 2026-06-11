@@ -1,6 +1,6 @@
 {
   "name": "@hew-lang/playground-client",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "TypeScript client for the Hew Playground API.",
   "author": "Stephen Olesen",
   "type": "module",

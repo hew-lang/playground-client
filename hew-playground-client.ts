@@ -19,11 +19,19 @@ export interface RunResponse {
   compiler_version?: string;
 }
 
+export interface ExampleCapabilities {
+  /** Browser capability — the browser lane exposes analysis only. */
+  browser: 'analysis-only';
+  /** WASI capability: `runnable` executes under wasm32-wasi. */
+  wasi: 'runnable' | 'unsupported';
+}
+
 export interface Example {
   name: string;
   description: string;
   category: string;
   source: string;
+  capabilities: ExampleCapabilities;
 }
 
 export interface ShareRequest {
@@ -85,8 +93,9 @@ export interface PlaygroundClientOptions {
   headers?: PlaygroundHeadersInit;
   /** Default compiler version sent as `compiler_version` in the request body
    *  on every `run()` call. Can be overridden per-request via the
-   *  `compiler_version` field in `RunRequest`. */
-  compilerVersion?: string;
+   *  `compiler_version` field in `RunRequest`. Pass `null` to omit the field
+   *  entirely and let the server choose its default version. */
+  compilerVersion?: string | null;
 }
 
 export class PlaygroundApiError<TBody = unknown> extends Error {
@@ -120,7 +129,8 @@ export class HewPlaygroundClient {
     this.baseUrl = resolved.baseUrl;
     this.fetchImpl = resolved.fetch ?? resolveFetch();
     this.defaultHeaders = resolved.headers;
-    this.compilerVersion = resolved.compilerVersion ?? '0.5.0';
+    this.compilerVersion =
+      resolved.compilerVersion === null ? undefined : (resolved.compilerVersion ?? '0.5.0');
   }
 
   async health(): Promise<string> {
