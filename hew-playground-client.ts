@@ -36,6 +36,9 @@ export interface Example {
 
 export interface ShareRequest {
   source: string;
+  /** Pin the snippet to a specific compiler version (e.g. `"0.5.0"`) so the
+   *  share link reproduces under that version. Omit to let the server default. */
+  compiler_version?: string;
 }
 
 export interface ShareResponse {
@@ -218,11 +221,15 @@ function resolveFetch(): PlaygroundFetch {
   return (input, init) => globalThis.fetch(input, init) as Promise<PlaygroundResponseLike>;
 }
 
-function normalizeSource(request: RunRequest | ShareRequest | string): { source: string } {
+function normalizeSource(request: RunRequest | ShareRequest | string): { source: string; compiler_version?: string } {
   if (typeof request === 'string') {
     return { source: request };
   }
-  return { source: request.source };
+  const body: { source: string; compiler_version?: string } = { source: request.source };
+  if (request.compiler_version) {
+    body.compiler_version = request.compiler_version;
+  }
+  return body;
 }
 
 function normalizeRunRequest(

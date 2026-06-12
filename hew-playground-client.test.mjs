@@ -212,3 +212,33 @@ test('default client sends compiler_version 0.5.0', async () => {
   const body = JSON.parse(requests[0].init.body);
   assert.equal(body.compiler_version, '0.5.0');
 });
+
+test('createShare with compiler_version sends it in the body', async () => {
+  const requests = [];
+  const client = new HewPlaygroundClient({
+    baseUrl: 'https://playground.example',
+    fetch: async (url, init) => {
+      requests.push({ url, init });
+      return mockJsonResponse({ id: 'abc123def4567890' });
+    },
+  });
+  await client.createShare({ source: 'fn main() {}', compiler_version: '0.5.0' });
+  const body = JSON.parse(requests[0].init.body);
+  assert.equal(body.source, 'fn main() {}');
+  assert.equal(body.compiler_version, '0.5.0');
+});
+
+test('createShare with a string omits compiler_version', async () => {
+  const requests = [];
+  const client = new HewPlaygroundClient({
+    baseUrl: 'https://playground.example',
+    fetch: async (url, init) => {
+      requests.push({ url, init });
+      return mockJsonResponse({ id: 'abc123def4567890' });
+    },
+  });
+  await client.createShare('fn main() {}');
+  const body = JSON.parse(requests[0].init.body);
+  assert.equal(body.source, 'fn main() {}');
+  assert.equal('compiler_version' in body, false);
+});
