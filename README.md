@@ -4,25 +4,26 @@ Lightweight TypeScript client for the Hew Playground API.
 
 ## Install
 
+`@hew-lang/playground-client` is published to **GitHub Packages**, the canonical
+registry for the `@hew-lang` scope. Point the scope at GitHub Packages in an
+`.npmrc` (GitHub Packages requires an authenticated token — a `read:packages`
+PAT — even for installs):
+
+```ini
+@hew-lang:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
+
 ```bash
 npm install @hew-lang/playground-client
 ```
 
-npmjs is the canonical registry.
+A convenience mirror is also published to npmjs as needed, for consumers who
+prefer it:
 
-### Installing from GitHub Packages
-
-The same versions are mirrored to GitHub Packages. To install from there, point the
-`@hew-lang` scope at the GitHub npm registry in an `.npmrc` (GitHub Packages requires
-an authenticated token, even for installs):
-
-```ini
-@hew-lang:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```bash
+npm install @hew-lang/playground-client --@hew-lang:registry=https://registry.npmjs.org/
 ```
-
-Versions and dist-tags are independent per registry; prefer npmjs unless you
-specifically need the GitHub Packages mirror.
 
 ## Simplest usage
 
@@ -146,14 +147,14 @@ For a local checkout of this repository, you can swap the import path to `./hew-
 
 ## Releasing
 
-npmjs is canonical; GitHub Packages is kept in sync by the same workflow.
+GitHub Packages is canonical; npmjs is an optional mirror published in the same run.
 
 1. Bump `version` in `package.json` and update the README/API docs.
 2. Run `npm run test:sdk` locally.
 3. Commit and push to `main`.
 4. Run the **Publish** workflow (`workflow_dispatch`) with `dry_run: true` to
-   validate, then `dry_run: false` to publish to npmjs and mirror to GitHub Packages
-   in the same run (npmjs first, then the mirror).
+   validate, then `dry_run: false` to publish to GitHub Packages (and, when
+   `mirror_npm` is enabled, mirror to npmjs in the same run).
 5. Tag the release — `git tag vX.Y.Z && git push --tags` — to generate the GitHub
    Release notes.
 
