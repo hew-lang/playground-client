@@ -51,12 +51,17 @@ fn main() {
 console.log(result.stdout);
 ```
 
-The playground accepts dotted module paths and grouped selections such as
+Hew 0.6 rc2 uses dotted module paths and grouped selections such as
 `std.io.scanner.{words}`. Variant constructors and patterns are contextual, so use
-`.Message` when the enum type is known. The retired `::` path separator, glob
-imports, and turbofish syntax are rejected by the compiler. Compile responses
-preserve the migration diagnostics, including `E_PATH_LEGACY_SEPARATOR` and
-`E_LEGACY_TURBOFISH`.
+`.Message` when the enum type is known. In that compiler, retired `::` paths and
+Rust-style turbofish syntax produce migration diagnostics such as
+`E_PATH_LEGACY_SEPARATOR` and `E_LEGACY_TURBOFISH`.
+
+This client neither embeds a compiler nor interprets compiler diagnostics: it
+transports source and preserves opaque compiler stderr from the server. Its
+default and documented retained server compiler is `0.5.0`; therefore diagnostic
+text, codes, and supported syntax are compiler-version-dependent rather than a
+guarantee of `0.5.0` output.
 
 ## Runtime requirements
 

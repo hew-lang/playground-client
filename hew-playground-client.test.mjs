@@ -73,9 +73,7 @@ test('run without version sends package default version in body', async () => {
   assert.equal(body.compiler_version, '0.5.0');
 });
 
-test('preserves dotted-surface source and migration diagnostics', async () => {
-  const requests = [];
-  const source = `import std.io.scanner.{words};
+const dottedSurfaceSource = `import std.io.scanner.{words};
 
 enum Greeting {
   Message(string);
@@ -89,7 +87,52 @@ fn main() {
   }
   println(tokens.len());
 }`;
-  const diagnostic = 'error[E_PATH_LEGACY_SEPARATOR]: `::` path separators are retired\nhelp: use dotted paths instead';
+
+const legacyPathSource = `import std::io::scanner::{words};
+
+fn main() {
+  println(words("hello").len());
+}`;
+const legacyPathDiagnostic = 'error: E_PATH_LEGACY_SEPARATOR: `::` path separators have been removed; use dotted paths: `import std.io.scanner.{words};`\n  = help: use the migrated spelling `import std.io.scanner.{words};`';
+
+const legacyTurbofishSource = `fn main() {
+  let value = parse::<i64>("42");
+  println(value);
+}`;
+const legacyTurbofishDiagnostic = 'error: E_LEGACY_TURBOFISH: Rust-style `::<...>` has been removed; use Hew generic application: `let value = parse<i64>("42");`\n  = help: use the migrated spelling `let value = parse<i64>("42");`';
+
+function assertIllustrativeDiagnosticCoupling(serializedRequest, diagnostic, retiredSyntax, code) {
+  const request = JSON.parse(serializedRequest);
+  assert.match(request.source, retiredSyntax, `${code} requires the corresponding retired syntax in the request source`);
+  assert.match(diagnostic, new RegExp(`^error: ${code}:`));
+}
+
+test('preserves valid dotted and contextual source unchanged', async () => {
+  const requests = [];
+  const client = new HewPlaygroundClient({
+    baseUrl: 'https://playground.example',
+    fetch: async (url, init) => {
+      requests.push({ url, init });
+      return mockJsonResponse({
+        success: true,
+        stdout: 'hello\n',
+        stderr: '',
+        elapsed_ms: 5,
+        compiler_version: '0.5.0',
+      });
+    },
+  });
+
+  const response = await client.run(dottedSurfaceSource);
+  const body = JSON.parse(requests[0].init.body);
+  assert.equal(body.source, dottedSurfaceSource);
+  assert.match(body.source, /std\.io\.scanner\.\{words\}/);
+  assert.match(body.source, /\.Message/);
+  assert.equal(response.stdout, 'hello\n');
+});
+
+test('serializes a legacy-path request and preserves an illustrative rc2 response', async () => {
+  const requests = [];
   const client = new HewPlaygroundClient({
     baseUrl: 'https://playground.example',
     fetch: async (url, init) => {
@@ -98,39 +141,48 @@ fn main() {
         success: false,
         stdout: '',
         stderr: '',
-        compile_error: diagnostic,
+        compile_error: legacyPathDiagnostic,
         elapsed_ms: 5,
-        compiler_version: '0.5.0',
+        compiler_version: '0.6.0-rc2',
       });
     },
   });
 
-  const response = await client.run(source);
-  const body = JSON.parse(requests[0].init.body);
-  assert.equal(body.source, source);
-  assert.match(body.source, /std\.io\.scanner\.\{words\}/);
-  assert.match(body.source, /\.Message/);
-  assert.equal(response.compile_error, diagnostic);
-  assert.match(response.compile_error, /E_PATH_LEGACY_SEPARATOR/);
+  const response = await client.run({ source: legacyPathSource, compiler_version: '0.6.0-rc2' });
+  assert.equal(requests[0].init.body, JSON.stringify({ source: legacyPathSource, compiler_version: '0.6.0-rc2' }));
+  assertIllustrativeDiagnosticCoupling(requests[0].init.body, response.compile_error, /::/, 'E_PATH_LEGACY_SEPARATOR');
+  assert.equal(response.compile_error, legacyPathDiagnostic);
 });
 
-test('preserves the legacy turbofish migration diagnostic', async () => {
-  const diagnostic = 'error[E_LEGACY_TURBOFISH]: turbofish syntax is retired\nhelp: use contextual type inference instead';
+test('serializes a legacy-turbofish request and preserves an illustrative rc2 response', async () => {
+  const requests = [];
   const client = new HewPlaygroundClient({
     baseUrl: 'https://playground.example',
-    fetch: async () => mockJsonResponse({
-      success: false,
-      stdout: '',
-      stderr: '',
-      compile_error: diagnostic,
-      elapsed_ms: 5,
-      compiler_version: '0.5.0',
-    }),
+    fetch: async (url, init) => {
+      requests.push({ url, init });
+      return mockJsonResponse({
+        success: false,
+        stdout: '',
+        stderr: '',
+        compile_error: legacyTurbofishDiagnostic,
+        elapsed_ms: 5,
+        compiler_version: '0.6.0-rc2',
+      });
+    },
   });
 
-  const response = await client.run('fn main() {}');
-  assert.equal(response.compile_error, diagnostic);
-  assert.match(response.compile_error, /E_LEGACY_TURBOFISH/);
+  const response = await client.run({ source: legacyTurbofishSource, compiler_version: '0.6.0-rc2' });
+  assert.equal(requests[0].init.body, JSON.stringify({ source: legacyTurbofishSource, compiler_version: '0.6.0-rc2' }));
+  assertIllustrativeDiagnosticCoupling(requests[0].init.body, response.compile_error, /::<[^>]+>/, 'E_LEGACY_TURBOFISH');
+  assert.equal(response.compile_error, legacyTurbofishDiagnostic);
+});
+
+test('mutation control rejects an unrelated valid request for an rc2 migration diagnostic', () => {
+  const unrelatedValidRequest = JSON.stringify({ source: dottedSurfaceSource, compiler_version: '0.6.0-rc2' });
+  assert.throws(
+    () => assertIllustrativeDiagnosticCoupling(unrelatedValidRequest, legacyPathDiagnostic, /::/, 'E_PATH_LEGACY_SEPARATOR'),
+    /requires the corresponding retired syntax/,
+  );
 });
 
 test('documents only the dotted Hew surface in the OpenAPI source example', () => {
@@ -142,8 +194,12 @@ test('documents only the dotted Hew surface in the OpenAPI source example', () =
   assert.match(source, /std\.io\.scanner\.\{words\}/);
   assert.match(source, /\.Message/);
   assert.doesNotMatch(source, /::|\.\*|::<|turbofish/);
-  assert.match(responses.legacyPathSeparator.value.compile_error, /E_PATH_LEGACY_SEPARATOR/);
-  assert.match(responses.legacyTurbofish.value.compile_error, /E_LEGACY_TURBOFISH/);
+  assert.equal(examples.legacyPathSeparatorRc2.value.source, legacyPathSource);
+  assert.equal(examples.legacyTurbofishRc2.value.source, legacyTurbofishSource);
+  assert.match(responses.legacyPathSeparatorRc2.value.compile_error, /^error: E_PATH_LEGACY_SEPARATOR:/);
+  assert.match(responses.legacyTurbofishRc2.value.compile_error, /^error: E_LEGACY_TURBOFISH:/);
+  assert.equal(responses.legacyPathSeparatorRc2.value.compiler_version, '0.6.0-rc2');
+  assert.equal(responses.legacyTurbofishRc2.value.compiler_version, '0.6.0-rc2');
 });
 
 test('run with client compilerVersion sends compiler_version in body', async () => {
