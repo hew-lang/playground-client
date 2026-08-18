@@ -108,7 +108,7 @@
         ],
         "operationId": "runCode",
         "summary": "Compile and run Hew source code",
-        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific Hew compiler version (defaults to 0.5.0).",
+        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific retained server compiler version (defaults to 0.5.0). Dotted paths, grouped selections, contextual variants, and the migration diagnostics shown in the illustrative examples are Hew 0.6 rc2 behavior, not a guarantee of 0.5.0 output. The client transports source and opaque compiler stderr; diagnostic text is compiler-version-dependent.",
         "parameters": [
           {
             "name": "X-Hew-Version",
@@ -137,6 +137,27 @@
                 "helloWorld": {
                   "value": {
                     "source": "fn main() { println(\"hello\"); }"
+                  }
+                },
+                "dottedSurface": {
+                  "summary": "Hew 0.6 rc2 dotted and contextual syntax",
+                  "description": "Illustrative source for Hew 0.6 rc2. It does not change the retained server compiler versions documented by this API.",
+                  "value": {
+                    "source": "import std.io.scanner.{words};\n\nenum Greeting {\n  Message(string);\n}\n\nfn main() {\n  let tokens = words(\"hello\");\n  let greeting: Greeting = .Message(\"hello\");\n  match greeting {\n    .Message(text) => println(text),\n  }\n  println(tokens.len());\n}"
+                  }
+                },
+                "legacyPathSeparatorRc2": {
+                  "summary": "Illustrative Hew 0.6 rc2 legacy-path input",
+                  "description": "This source is paired with the illustrative rc2 response below. The client sends it unchanged; server compiler availability and diagnostics are version-dependent.",
+                  "value": {
+                    "source": "import std::io::scanner::{words};\n\nfn main() {\n  println(words(\"hello\").len());\n}"
+                  }
+                },
+                "legacyTurbofishRc2": {
+                  "summary": "Illustrative Hew 0.6 rc2 legacy-turbofish input",
+                  "description": "This source is paired with the illustrative rc2 response below. The client sends it unchanged; server compiler availability and diagnostics are version-dependent.",
+                  "value": {
+                    "source": "fn main() {\n  let value = parse::<i64>(\"42\");\n  println(value);\n}"
                   }
                 },
                 "withVersion": {
@@ -185,14 +206,28 @@
                       "compiler_version": "0.5.0"
                     }
                   },
-                  "compileError": {
+                  "legacyPathSeparatorRc2": {
+                    "summary": "Illustrative Hew 0.6 rc2 legacy-path diagnostic",
+                    "description": "Illustrative compiler stderr for the `legacyPathSeparatorRc2` source request. The client preserves it as opaque text; source-location context and diagnostic text are compiler-version-dependent.",
                     "value": {
                       "success": false,
                       "stdout": "",
                       "stderr": "",
-                      "compile_error": "error: parse error at line 1",
+                      "compile_error": "error: E_PATH_LEGACY_SEPARATOR: `::` path separators have been removed; use dotted paths: `import std.io.scanner.{words};`\n  = help: use the migrated spelling `import std.io.scanner.{words};`",
                       "elapsed_ms": 12,
-                      "compiler_version": "0.5.0"
+                      "compiler_version": "0.6.0-rc2"
+                    }
+                  },
+                  "legacyTurbofishRc2": {
+                    "summary": "Illustrative Hew 0.6 rc2 legacy-turbofish diagnostic",
+                    "description": "Illustrative compiler stderr for the `legacyTurbofishRc2` source request. The client preserves it as opaque text; source-location context and diagnostic text are compiler-version-dependent.",
+                    "value": {
+                      "success": false,
+                      "stdout": "",
+                      "stderr": "",
+                      "compile_error": "error: E_LEGACY_TURBOFISH: Rust-style `::<...>` has been removed; use Hew generic application: `let value = parse<i64>(\"42\");`\n  = help: use the migrated spelling `let value = parse<i64>(\"42\");`",
+                      "elapsed_ms": 12,
+                      "compiler_version": "0.6.0-rc2"
                     }
                   },
                   "nonZeroExit": {
@@ -459,7 +494,7 @@
         "properties": {
           "source": {
             "type": "string",
-            "description": "Hew source code. The handler rejects strings larger than 64 KiB."
+            "description": "Hew source code. Dotted paths, `.{ }` grouped selections, and contextual variants (for example, `.Ready`) are Hew 0.6 rc2 syntax examples; the retained server compiler version determines accepted syntax. The handler rejects strings larger than 64 KiB."
           },
           "compiler_version": {
             "type": "string",
@@ -508,7 +543,7 @@
           },
           "compile_error": {
             "type": "string",
-            "description": "Compiler stderr, present only when the Hew compiler exits with its dedicated compile-error code."
+            "description": "Opaque compiler stderr, present only when the Hew compiler exits with its dedicated compile-error code. The client does not interpret or generate diagnostics. For example, Hew 0.6 rc2 reports `E_PATH_LEGACY_SEPARATOR` for `::` paths and `E_LEGACY_TURBOFISH` for Rust-style turbofish; codes, text, and source-location context are compiler-version-dependent."
           },
           "exit_code": {
             "type": "integer",

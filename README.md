@@ -32,9 +32,36 @@ import { HewPlaygroundClient } from '@hew-lang/playground-client';
 
 const client = new HewPlaygroundClient('https://livecode-v1.hew.sh');
 
-const result = await client.run('fn main() { println("hello"); }');
+const result = await client.run(`
+import std.io.scanner.{words};
+
+enum Greeting {
+  Message(string);
+}
+
+fn main() {
+  let tokens = words("hello");
+  let greeting: Greeting = .Message("hello");
+  match greeting {
+    .Message(text) => println(text),
+  }
+  println(tokens.len());
+}
+`);
 console.log(result.stdout);
 ```
+
+Hew 0.6 rc2 uses dotted module paths and grouped selections such as
+`std.io.scanner.{words}`. Variant constructors and patterns are contextual, so use
+`.Message` when the enum type is known. In that compiler, retired `::` paths and
+Rust-style turbofish syntax produce migration diagnostics such as
+`E_PATH_LEGACY_SEPARATOR` and `E_LEGACY_TURBOFISH`.
+
+This client neither embeds a compiler nor interprets compiler diagnostics: it
+transports source and preserves opaque compiler stderr from the server. Its
+default and documented retained server compiler is `0.5.0`; therefore diagnostic
+text, codes, and supported syntax are compiler-version-dependent rather than a
+guarantee of `0.5.0` output.
 
 ## Runtime requirements
 
