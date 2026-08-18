@@ -32,9 +32,31 @@ import { HewPlaygroundClient } from '@hew-lang/playground-client';
 
 const client = new HewPlaygroundClient('https://livecode-v1.hew.sh');
 
-const result = await client.run('fn main() { println("hello"); }');
+const result = await client.run(`
+import std.io.scanner.{words};
+
+enum Greeting {
+  Message(string);
+}
+
+fn main() {
+  let tokens = words("hello");
+  let greeting: Greeting = .Message("hello");
+  match greeting {
+    .Message(text) => println(text),
+  }
+  println(tokens.len());
+}
+`);
 console.log(result.stdout);
 ```
+
+The playground accepts dotted module paths and grouped selections such as
+`std.io.scanner.{words}`. Variant constructors and patterns are contextual, so use
+`.Message` when the enum type is known. The retired `::` path separator, glob
+imports, and turbofish syntax are rejected by the compiler. Compile responses
+preserve the migration diagnostics, including `E_PATH_LEGACY_SEPARATOR` and
+`E_LEGACY_TURBOFISH`.
 
 ## Runtime requirements
 

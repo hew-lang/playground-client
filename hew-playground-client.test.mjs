@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import { HewPlaygroundClient, PlaygroundApiError } from './dist/hew-playground-client.js';
@@ -70,6 +71,79 @@ test('run without version sends package default version in body', async () => {
   const body = JSON.parse(requests[0].init.body);
   assert.equal(body.source, 'fn main() { println("hi"); }');
   assert.equal(body.compiler_version, '0.5.0');
+});
+
+test('preserves dotted-surface source and migration diagnostics', async () => {
+  const requests = [];
+  const source = `import std.io.scanner.{words};
+
+enum Greeting {
+  Message(string);
+}
+
+fn main() {
+  let tokens = words("hello");
+  let greeting: Greeting = .Message("hello");
+  match greeting {
+    .Message(text) => println(text),
+  }
+  println(tokens.len());
+}`;
+  const diagnostic = 'error[E_PATH_LEGACY_SEPARATOR]: `::` path separators are retired\nhelp: use dotted paths instead';
+  const client = new HewPlaygroundClient({
+    baseUrl: 'https://playground.example',
+    fetch: async (url, init) => {
+      requests.push({ url, init });
+      return mockJsonResponse({
+        success: false,
+        stdout: '',
+        stderr: '',
+        compile_error: diagnostic,
+        elapsed_ms: 5,
+        compiler_version: '0.5.0',
+      });
+    },
+  });
+
+  const response = await client.run(source);
+  const body = JSON.parse(requests[0].init.body);
+  assert.equal(body.source, source);
+  assert.match(body.source, /std\.io\.scanner\.\{words\}/);
+  assert.match(body.source, /\.Message/);
+  assert.equal(response.compile_error, diagnostic);
+  assert.match(response.compile_error, /E_PATH_LEGACY_SEPARATOR/);
+});
+
+test('preserves the legacy turbofish migration diagnostic', async () => {
+  const diagnostic = 'error[E_LEGACY_TURBOFISH]: turbofish syntax is retired\nhelp: use contextual type inference instead';
+  const client = new HewPlaygroundClient({
+    baseUrl: 'https://playground.example',
+    fetch: async () => mockJsonResponse({
+      success: false,
+      stdout: '',
+      stderr: '',
+      compile_error: diagnostic,
+      elapsed_ms: 5,
+      compiler_version: '0.5.0',
+    }),
+  });
+
+  const response = await client.run('fn main() {}');
+  assert.equal(response.compile_error, diagnostic);
+  assert.match(response.compile_error, /E_LEGACY_TURBOFISH/);
+});
+
+test('documents only the dotted Hew surface in the OpenAPI source example', () => {
+  const specification = JSON.parse(readFileSync(new URL('./openapi.json', import.meta.url), 'utf8'));
+  const examples = specification.paths['/api/run'].post.requestBody.content['application/json'].examples;
+  const source = examples.dottedSurface.value.source;
+  const responses = specification.paths['/api/run'].post.responses['200'].content['application/json'].examples;
+
+  assert.match(source, /std\.io\.scanner\.\{words\}/);
+  assert.match(source, /\.Message/);
+  assert.doesNotMatch(source, /::|\.\*|::<|turbofish/);
+  assert.match(responses.legacyPathSeparator.value.compile_error, /E_PATH_LEGACY_SEPARATOR/);
+  assert.match(responses.legacyTurbofish.value.compile_error, /E_LEGACY_TURBOFISH/);
 });
 
 test('run with client compilerVersion sends compiler_version in body', async () => {

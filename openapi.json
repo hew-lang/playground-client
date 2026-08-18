@@ -108,7 +108,7 @@
         ],
         "operationId": "runCode",
         "summary": "Compile and run Hew source code",
-        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific Hew compiler version (defaults to 0.5.0).",
+        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific Hew compiler version (defaults to 0.5.0). Hew source uses dotted paths and `.{ }` grouped selections; legacy `::` paths, glob imports, and turbofish are compile errors with migration diagnostics.",
         "parameters": [
           {
             "name": "X-Hew-Version",
@@ -137,6 +137,11 @@
                 "helloWorld": {
                   "value": {
                     "source": "fn main() { println(\"hello\"); }"
+                  }
+                },
+                "dottedSurface": {
+                  "value": {
+                    "source": "import std.io.scanner.{words};\n\nenum Greeting {\n  Message(string);\n}\n\nfn main() {\n  let tokens = words(\"hello\");\n  let greeting: Greeting = .Message(\"hello\");\n  match greeting {\n    .Message(text) => println(text),\n  }\n  println(tokens.len());\n}"
                   }
                 },
                 "withVersion": {
@@ -185,12 +190,22 @@
                       "compiler_version": "0.5.0"
                     }
                   },
-                  "compileError": {
+                  "legacyPathSeparator": {
                     "value": {
                       "success": false,
                       "stdout": "",
                       "stderr": "",
-                      "compile_error": "error: parse error at line 1",
+                      "compile_error": "error[E_PATH_LEGACY_SEPARATOR]: `::` path separators are retired\nhelp: use dotted paths instead",
+                      "elapsed_ms": 12,
+                      "compiler_version": "0.5.0"
+                    }
+                  },
+                  "legacyTurbofish": {
+                    "value": {
+                      "success": false,
+                      "stdout": "",
+                      "stderr": "",
+                      "compile_error": "error[E_LEGACY_TURBOFISH]: turbofish syntax is retired\nhelp: use contextual type inference instead",
                       "elapsed_ms": 12,
                       "compiler_version": "0.5.0"
                     }
@@ -459,7 +474,7 @@
         "properties": {
           "source": {
             "type": "string",
-            "description": "Hew source code. The handler rejects strings larger than 64 KiB."
+            "description": "Hew source code. Use dotted paths and `.{ }` grouped selections; variants are contextual (for example, `.Ready`). The handler rejects strings larger than 64 KiB."
           },
           "compiler_version": {
             "type": "string",
@@ -508,7 +523,7 @@
           },
           "compile_error": {
             "type": "string",
-            "description": "Compiler stderr, present only when the Hew compiler exits with its dedicated compile-error code."
+            "description": "Compiler stderr, present only when the Hew compiler exits with its dedicated compile-error code. Legacy `::` paths emit `E_PATH_LEGACY_SEPARATOR`; legacy turbofish emits `E_LEGACY_TURBOFISH`. Each diagnostic includes a migration suggestion."
           },
           "exit_code": {
             "type": "integer",
