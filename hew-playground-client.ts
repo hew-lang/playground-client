@@ -17,6 +17,12 @@ export interface RunResponse {
   profile?: string;
   /** The compiler version that was used for this run. */
   compiler_version?: string;
+  /** The execution lane that actually handled the request. Reports what ran,
+   *  not what was requested — a `"wasm"` request served while the server's
+   *  WASM lane is disabled says `"native"`. Absent when the request was
+   *  rejected before an execution lane was selected, and on responses from
+   *  servers that predate the field. */
+  execution_mode?: 'native' | 'wasm';
 }
 
 export interface ExampleCapabilities {
