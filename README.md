@@ -51,17 +51,23 @@ fn main() {
 console.log(result.stdout);
 ```
 
-Hew 0.6 rc2 uses dotted module paths and grouped selections such as
+Hew 0.6.1 uses dotted module paths and grouped selections such as
 `std.io.scanner.{words}`. Variant constructors and patterns are contextual, so use
-`.Message` when the enum type is known. In that compiler, retired `::` paths and
+`.Message` when the enum type is known. In this release, retired `::` paths and
 Rust-style turbofish syntax produce migration diagnostics such as
 `E_PATH_LEGACY_SEPARATOR` and `E_LEGACY_TURBOFISH`.
 
 This client neither embeds a compiler nor interprets compiler diagnostics: it
 transports source and preserves opaque compiler stderr from the server. Its
-default and documented retained server compiler is `0.5.0`; therefore diagnostic
-text, codes, and supported syntax are compiler-version-dependent rather than a
-guarantee of `0.5.0` output.
+default requested compiler is `0.6.1`; diagnostic text, codes, and supported syntax remain compiler-version-dependent. Use
+`listVersions()` to see which versions the server currently provides.
+
+## Execution targets
+
+The hosted API runs native programs. It refuses `execution_mode: "wasm"`
+with HTTP 422 and never silently runs the request natively. For local browser
+execution, use `@hew-lang/playground-sandbox`. Its compiler and VM report
+native-only capabilities explicitly.
 
 ## Runtime requirements
 
@@ -85,7 +91,7 @@ const client = new HewPlaygroundClient({
 ## Compiler version selection
 
 Every `run()` sends `compiler_version` in the request body. The client
-defaults to `'0.5.0'`; override it client-wide or per request, or pass
+defaults to `'0.6.1'`; override it client-wide or per request, or pass
 `null` to omit the field and let the server pick its default version:
 
 ```ts
@@ -102,7 +108,7 @@ const tracking = new HewPlaygroundClient({
 });
 
 // Per-request override
-await pinned.run({ source: 'fn main() {}', compiler_version: '0.5.0' });
+await pinned.run({ source: 'fn main() {}', compiler_version: '0.6.1' });
 ```
 
 Examples returned by `listExamples()` carry a `capabilities` object
@@ -116,7 +122,7 @@ describing their execution tier (`browser` is always `'analysis-only'`;
 | `baseUrl` | `string` | Base URL of the playground server. |
 | `fetch` | `PlaygroundFetch` | Optional custom fetch implementation. |
 | `headers` | `PlaygroundHeadersInit` | Optional default headers added to every request. |
-| `compilerVersion` | `string \| null` | Default `compiler_version` sent on every `run()`. Defaults to `'0.5.0'`; pass `null` to omit it and use the server default. |
+| `compilerVersion` | `string \| null` | Default `compiler_version` sent on every `run()`. Defaults to `'0.6.1'`; pass `null` to omit it and use the server default. |
 
 ## API overview
 
