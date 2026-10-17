@@ -634,10 +634,6 @@
           "source": {
             "type": "string",
             "description": "Hew source code to store."
-          },
-          "compiler_version": {
-            "type": "string",
-            "description": "Optional compiler version to pin the snippet to (e.g. \"0.6.1\"). Omit to let the server default."
           }
         }
       },

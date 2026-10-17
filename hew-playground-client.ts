@@ -43,8 +43,8 @@ export interface Example {
 
 export interface ShareRequest {
   source: string;
-  /** Pin the snippet to a specific compiler version (e.g. `"0.6.1"`) so the
-   *  share link reproduces under that version. Omit to let the server default. */
+  /** @deprecated The hosted share API stores source only. Keep a selected
+   *  compiler version in the share URL, then pass it to run(). */
   compiler_version?: string;
 }
 
