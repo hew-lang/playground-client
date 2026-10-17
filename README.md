@@ -171,6 +171,10 @@ try {
 
 `run()` has one important API-level nuance: compile failures still come back as a normal JSON `RunResponse`, so check `success`, `compile_error`, and `exit_code` rather than assuming every unsuccessful program run throws.
 
+The share API stores source only. A UI that pins a shared snippet must retain
+the compiler version in its URL and pass that value to `run()` when executing
+the snippet.
+
 ## Related artifacts
 
 - `openapi.json` — machine-readable HTTP API specification.
