@@ -3,7 +3,8 @@ export interface RunRequest {
   /** Request a specific compiler version (e.g. `"0.2.0"`). Overrides the
    *  client-wide `compilerVersion` and the `X-Hew-Version` header. */
   compiler_version?: string;
-  /** Execution backend. Defaults to `"native"` on the server when absent. */
+  /** Native execution is the server default. The server refuses `"wasm"`
+   *  with HTTP 422; use playground-sandbox for browser execution. */
   execution_mode?: 'native' | 'wasm';
 }
 
@@ -18,8 +19,8 @@ export interface RunResponse {
   /** The compiler version that was used for this run. */
   compiler_version?: string;
   /** The execution lane that actually handled the request. Reports what ran,
-   *  not what was requested — a `"wasm"` request served while the server's
-   *  WASM lane is disabled says `"native"`. Absent when the request was
+   *  not what was requested. A refused `"wasm"` request never falls back to
+   *  native execution. Absent when the request was
    *  rejected before an execution lane was selected, and on responses from
    *  servers that predate the field. */
   execution_mode?: 'native' | 'wasm';
@@ -42,7 +43,7 @@ export interface Example {
 
 export interface ShareRequest {
   source: string;
-  /** Pin the snippet to a specific compiler version (e.g. `"0.5.0"`) so the
+  /** Pin the snippet to a specific compiler version (e.g. `"0.6.1"`) so the
    *  share link reproduces under that version. Omit to let the server default. */
   compiler_version?: string;
 }
@@ -139,7 +140,7 @@ export class HewPlaygroundClient {
     this.fetchImpl = resolved.fetch ?? resolveFetch();
     this.defaultHeaders = resolved.headers;
     this.compilerVersion =
-      resolved.compilerVersion === null ? undefined : (resolved.compilerVersion ?? '0.5.0');
+      resolved.compilerVersion === null ? undefined : (resolved.compilerVersion ?? '0.6.1');
   }
 
   async health(): Promise<string> {

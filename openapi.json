@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Hew Playground API",
-    "version": "0.5.0",
+    "version": "0.6.1",
     "summary": "HTTP API for compiling, running, listing, and sharing Hew playground programs.",
-    "description": "The Hew playground exposes a small JSON-over-HTTP API. Supports multiple compiler versions (v0.5.0 default, v0.4.0 retained, v0.3.0 and v0.2.0 legacy).",
+    "description": "The Hew playground exposes a small JSON-over-HTTP API. Supports multiple compiler versions (v0.6.1 default, v0.5.1 and v0.4.0 retained, v0.3.0 and v0.2.0 legacy).",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
@@ -85,9 +85,9 @@
                 "examples": {
                   "multiVersion": {
                     "value": {
-                      "default_version": "0.5.0",
+                      "default_version": "0.6.1",
                       "available_versions": [
-                        "0.5.0",
+                        "0.6.1",
                         "0.4.0",
                         "0.3.0",
                         "0.2.0"
@@ -108,7 +108,7 @@
         ],
         "operationId": "runCode",
         "summary": "Compile and run Hew source code",
-        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific retained server compiler version (defaults to 0.5.0). Dotted paths, grouped selections, contextual variants, and the migration diagnostics shown in the illustrative examples are Hew 0.6 rc2 behavior, not a guarantee of 0.5.0 output. The client transports source and opaque compiler stderr; diagnostic text is compiler-version-dependent.",
+        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific retained server compiler version (defaults to 0.6.1). Dotted paths, grouped selections, contextual variants, and the migration diagnostics shown in the illustrative examples are Hew 0.6.1 behaviour. The client transports source and opaque compiler stderr; diagnostic text is compiler-version-dependent.",
         "parameters": [
           {
             "name": "X-Hew-Version",
@@ -118,7 +118,8 @@
             "schema": {
               "type": "string",
               "enum": [
-                "0.5.0",
+                "0.6.1",
+                "0.5.1",
                 "0.4.0",
                 "0.3.0",
                 "0.2.0"
@@ -140,21 +141,21 @@
                   }
                 },
                 "dottedSurface": {
-                  "summary": "Hew 0.6 rc2 dotted and contextual syntax",
-                  "description": "Illustrative source for Hew 0.6 rc2. It does not change the retained server compiler versions documented by this API.",
+                  "summary": "Hew 0.6.1 dotted and contextual syntax",
+                  "description": "Illustrative source for Hew 0.6.1. It does not change the retained server compiler versions documented by this API.",
                   "value": {
                     "source": "import std.io.scanner.{words};\n\nenum Greeting {\n  Message(string);\n}\n\nfn main() {\n  let tokens = words(\"hello\");\n  let greeting: Greeting = .Message(\"hello\");\n  match greeting {\n    .Message(text) => println(text),\n  }\n  println(tokens.len());\n}"
                   }
                 },
                 "legacyPathSeparatorRc2": {
-                  "summary": "Illustrative Hew 0.6 rc2 legacy-path input",
+                  "summary": "Illustrative Hew 0.6.1 legacy-path input",
                   "description": "This source is paired with the illustrative rc2 response below. The client sends it unchanged; server compiler availability and diagnostics are version-dependent.",
                   "value": {
                     "source": "import std::io::scanner::{words};\n\nfn main() {\n  println(words(\"hello\").len());\n}"
                   }
                 },
                 "legacyTurbofishRc2": {
-                  "summary": "Illustrative Hew 0.6 rc2 legacy-turbofish input",
+                  "summary": "Illustrative Hew 0.6.1 legacy-turbofish input",
                   "description": "This source is paired with the illustrative rc2 response below. The client sends it unchanged; server compiler availability and diagnostics are version-dependent.",
                   "value": {
                     "source": "fn main() {\n  let value = parse::<i64>(\"42\");\n  println(value);\n}"
@@ -163,7 +164,7 @@
                 "withVersion": {
                   "value": {
                     "source": "fn main() { println(\"hello\"); }",
-                    "compiler_version": "0.5.0"
+                    "compiler_version": "0.6.1"
                   }
                 },
                 "withWasmExecution": {
@@ -203,11 +204,11 @@
                       "stdout": "hello\n",
                       "stderr": "",
                       "elapsed_ms": 18,
-                      "compiler_version": "0.5.0"
+                      "compiler_version": "0.6.1"
                     }
                   },
                   "legacyPathSeparatorRc2": {
-                    "summary": "Illustrative Hew 0.6 rc2 legacy-path diagnostic",
+                    "summary": "Illustrative Hew 0.6.1 legacy-path diagnostic",
                     "description": "Illustrative compiler stderr for the `legacyPathSeparatorRc2` source request. The client preserves it as opaque text; source-location context and diagnostic text are compiler-version-dependent.",
                     "value": {
                       "success": false,
@@ -219,7 +220,7 @@
                     }
                   },
                   "legacyTurbofishRc2": {
-                    "summary": "Illustrative Hew 0.6 rc2 legacy-turbofish diagnostic",
+                    "summary": "Illustrative Hew 0.6.1 legacy-turbofish diagnostic",
                     "description": "Illustrative compiler stderr for the `legacyTurbofishRc2` source request. The client preserves it as opaque text; source-location context and diagnostic text are compiler-version-dependent.",
                     "value": {
                       "success": false,
@@ -237,7 +238,7 @@
                       "stderr": "",
                       "exit_code": 2,
                       "elapsed_ms": 4,
-                      "compiler_version": "0.5.0"
+                      "compiler_version": "0.6.1"
                     }
                   }
                 }
@@ -418,10 +419,10 @@
             "description": "The request body was not sent as JSON."
           },
           "429": {
-            "description": "Per-IP share rate limit exhausted; retry later. Body shape matches 400 (`{ \"id\": \"\" }`) — distinguish by status."
+            "description": "Per-IP share rate limit exhausted; retry later. Body shape matches 400 (`{ \"id\": \"\" }`) \u2014 distinguish by status."
           },
           "503": {
-            "description": "Share store at capacity; snippet rejected. Body shape matches 400 (`{ \"id\": \"\" }`) — distinguish by status."
+            "description": "Share store at capacity; snippet rejected. Body shape matches 400 (`{ \"id\": \"\" }`) \u2014 distinguish by status."
           }
         }
       }
@@ -494,18 +495,19 @@
         "properties": {
           "source": {
             "type": "string",
-            "description": "Hew source code. Dotted paths, `.{ }` grouped selections, and contextual variants (for example, `.Ready`) are Hew 0.6 rc2 syntax examples; the retained server compiler version determines accepted syntax. The handler rejects strings larger than 64 KiB."
+            "description": "Hew source code. Dotted paths, `.{ }` grouped selections, and contextual variants (for example, `.Ready`) are Hew 0.6.1 syntax examples; the retained server compiler version determines accepted syntax. The handler rejects strings larger than 64 KiB."
           },
           "compiler_version": {
             "type": "string",
-            "description": "Compiler version to use. Defaults to `0.5.0` when omitted.",
+            "description": "Compiler version to use. Defaults to `0.6.1` when omitted.",
             "enum": [
-              "0.5.0",
+              "0.6.1",
+              "0.5.1",
               "0.4.0",
               "0.3.0",
               "0.2.0"
             ],
-            "default": "0.5.0"
+            "default": "0.6.1"
           },
           "execution_mode": {
             "type": "string",
@@ -543,7 +545,7 @@
           },
           "compile_error": {
             "type": "string",
-            "description": "Opaque compiler stderr, present only when the Hew compiler exits with its dedicated compile-error code. The client does not interpret or generate diagnostics. For example, Hew 0.6 rc2 reports `E_PATH_LEGACY_SEPARATOR` for `::` paths and `E_LEGACY_TURBOFISH` for Rust-style turbofish; codes, text, and source-location context are compiler-version-dependent."
+            "description": "Opaque compiler stderr, present only when the Hew compiler exits with its dedicated compile-error code. The client does not interpret or generate diagnostics. For example, Hew 0.6.1 reports `E_PATH_LEGACY_SEPARATOR` for `::` paths and `E_LEGACY_TURBOFISH` for Rust-style turbofish; codes, text, and source-location context are compiler-version-dependent."
           },
           "exit_code": {
             "type": "integer",
@@ -562,8 +564,8 @@
           },
           "compiler_version": {
             "type": "string",
-            "description": "The compiler version that was used for this run (e.g. \"0.5.0\").",
-            "example": "0.5.0"
+            "description": "The compiler version that was used for this run (e.g. \"0.6.1\").",
+            "example": "0.6.1"
           }
         }
       },
@@ -635,7 +637,7 @@
           },
           "compiler_version": {
             "type": "string",
-            "description": "Optional compiler version to pin the snippet to (e.g. \"0.5.0\"). Omit to let the server default."
+            "description": "Optional compiler version to pin the snippet to (e.g. \"0.6.1\"). Omit to let the server default."
           }
         }
       },
@@ -687,7 +689,7 @@
           "default_version": {
             "type": "string",
             "description": "The default compiler version used when none is specified.",
-            "example": "0.5.0"
+            "example": "0.6.1"
           },
           "available_versions": {
             "type": "array",
@@ -696,7 +698,7 @@
             },
             "description": "All compiler versions available on this server.",
             "example": [
-              "0.5.0",
+              "0.6.1",
               "0.4.0",
               "0.3.0",
               "0.2.0"

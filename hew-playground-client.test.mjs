@@ -62,15 +62,15 @@ test('run without version sends package default version in body', async () => {
     baseUrl: 'https://playground.example',
     fetch: async (url, init) => {
       requests.push({ url, init });
-      return mockJsonResponse({ success: true, stdout: 'hi\n', stderr: '', elapsed_ms: 50, compiler_version: '0.5.0' });
+      return mockJsonResponse({ success: true, stdout: 'hi\n', stderr: '', elapsed_ms: 50, compiler_version: '0.6.1' });
     },
   });
 
   const response = await client.run('fn main() { println("hi"); }');
-  assert.equal(response.compiler_version, '0.5.0');
+  assert.equal(response.compiler_version, '0.6.1');
   const body = JSON.parse(requests[0].init.body);
   assert.equal(body.source, 'fn main() { println("hi"); }');
-  assert.equal(body.compiler_version, '0.5.0');
+  assert.equal(body.compiler_version, '0.6.1');
 });
 
 const dottedSurfaceSource = `import std.io.scanner.{words};
@@ -118,7 +118,7 @@ test('preserves valid dotted and contextual source unchanged', async () => {
         stdout: 'hello\n',
         stderr: '',
         elapsed_ms: 5,
-        compiler_version: '0.5.0',
+        compiler_version: '0.6.1',
       });
     },
   });
@@ -321,7 +321,7 @@ test('compilerVersion: null omits compiler_version (server default)', async () =
     compilerVersion: null,
     fetch: async (input, init) => {
       requests.push({ input, init });
-      return mockJsonResponse({ success: true, stdout: '', stderr: '', elapsed_ms: 5, compiler_version: '0.5.0' });
+      return mockJsonResponse({ success: true, stdout: '', stderr: '', elapsed_ms: 5, compiler_version: '0.6.1' });
     },
   });
   await client.run('fn main() {}');
@@ -329,7 +329,7 @@ test('compilerVersion: null omits compiler_version (server default)', async () =
   assert.equal('compiler_version' in body, false);
 });
 
-test('default client sends compiler_version 0.5.0', async () => {
+test('default client sends compiler_version 0.6.1', async () => {
   const requests = [];
   const client = new HewPlaygroundClient({
     baseUrl: 'https://playground.example',
@@ -340,7 +340,7 @@ test('default client sends compiler_version 0.5.0', async () => {
   });
   await client.run('fn main() {}');
   const body = JSON.parse(requests[0].init.body);
-  assert.equal(body.compiler_version, '0.5.0');
+  assert.equal(body.compiler_version, '0.6.1');
 });
 
 test('createShare with compiler_version sends it in the body', async () => {
@@ -352,10 +352,10 @@ test('createShare with compiler_version sends it in the body', async () => {
       return mockJsonResponse({ id: 'abc123def4567890' });
     },
   });
-  await client.createShare({ source: 'fn main() {}', compiler_version: '0.5.0' });
+  await client.createShare({ source: 'fn main() {}', compiler_version: '0.6.1' });
   const body = JSON.parse(requests[0].init.body);
   assert.equal(body.source, 'fn main() {}');
-  assert.equal(body.compiler_version, '0.5.0');
+  assert.equal(body.compiler_version, '0.6.1');
 });
 
 test('createShare with a string omits compiler_version', async () => {
