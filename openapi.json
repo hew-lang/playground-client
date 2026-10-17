@@ -516,7 +516,7 @@
               "wasm"
             ],
             "default": "native",
-            "description": "Execution lane. \"native\" (default) compiles and runs as a subprocess. \"wasm\" compiles to wasm32-wasip1 and runs in-process via wasmtime (requires HEW_WASM_EXEC_ENABLED=1 on the server)."
+            "description": "Execution lane. \"native\" (default) compiles and runs as a subprocess. \"wasm\" is refused with HTTP 422. Use @hew-lang/playground-sandbox for local browser execution; the server never falls back to native."
           }
         }
       },
