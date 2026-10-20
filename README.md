@@ -4,26 +4,15 @@ Lightweight TypeScript client for the Hew Playground API.
 
 ## Install
 
-`@hew-lang/playground-client` is published to **GitHub Packages**, the canonical
-registry for the `@hew-lang` scope. Point the scope at GitHub Packages in an
-`.npmrc` (GitHub Packages requires an authenticated token — a `read:packages`
-PAT — even for installs):
-
-```ini
-@hew-lang:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
-```
+Install the compiled archive from the versioned public release:
 
 ```bash
-npm install @hew-lang/playground-client
+npm install https://github.com/hew-lang/playground-client/releases/download/v0.3.2/hew-lang-playground-client-0.3.2.tgz
 ```
 
-A convenience mirror is also published to npmjs as needed, for consumers who
-prefer it:
-
-```bash
-npm install @hew-lang/playground-client --@hew-lang:registry=https://registry.npmjs.org/
-```
+The archive includes JavaScript and TypeScript declarations. It needs no GitHub
+package token. The release also includes `SHA256SUMS`; consumers should commit
+their package-manager lockfile to pin the archive's integrity.
 
 ## Simplest usage
 
@@ -184,16 +173,17 @@ For a local checkout of this repository, you can swap the import path to `./hew-
 
 ## Releasing
 
-GitHub Packages is canonical; npmjs is an optional mirror published in the same run.
-
 1. Bump `version` in `package.json` and update the README/API docs.
 2. Run `npm run test:sdk` locally.
 3. Commit and push to `main`.
-4. Run the **Publish** workflow (`workflow_dispatch`) with `dry_run: true` to
-   validate, then `dry_run: false` to publish to GitHub Packages (and, when
-   `mirror_npm` is enabled, mirror to npmjs in the same run).
-5. Tag the release — `git tag vX.Y.Z && git push --tags` — to generate the GitHub
-   Release notes.
+4. After publication approval, tag the release. The **Release** workflow checks
+   the exact tag/version, installs and tests without registry credentials, then
+   publishes the compiled archive and `SHA256SUMS` with the release notes.
+
+An approved older tag can be packaged with the workflow's `release_tag` input.
+Reruns compare existing assets and refuse to replace different bytes. The
+separate **Publish** workflow remains available for optional registry mirrors;
+its ownership and permissions are unchanged.
 
 ## License
 
