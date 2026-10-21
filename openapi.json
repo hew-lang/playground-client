@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Hew Playground API",
-    "version": "0.6.1",
+    "version": "0.6.2",
     "summary": "HTTP API for compiling, running, listing, and sharing Hew playground programs.",
-    "description": "The Hew playground exposes a small JSON-over-HTTP API. Supports multiple compiler versions (v0.6.1 default, v0.5.1 and v0.4.0 retained, v0.3.0 and v0.2.0 legacy).",
+    "description": "The Hew playground exposes a small JSON-over-HTTP API. Supports multiple compiler versions (v0.6.2 default, v0.5.1 and v0.4.0 retained, v0.3.0 and v0.2.0 legacy).",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
@@ -85,9 +85,9 @@
                 "examples": {
                   "multiVersion": {
                     "value": {
-                      "default_version": "0.6.1",
+                      "default_version": "0.6.2",
                       "available_versions": [
-                        "0.6.1",
+                        "0.6.2",
                         "0.4.0",
                         "0.3.0",
                         "0.2.0"
@@ -108,7 +108,7 @@
         ],
         "operationId": "runCode",
         "summary": "Compile and run Hew source code",
-        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific retained server compiler version (defaults to 0.6.1). Dotted paths, grouped selections, contextual variants, and the migration diagnostics shown in the illustrative examples are Hew 0.6.1 behaviour. The client transports source and opaque compiler stderr; diagnostic text is compiler-version-dependent.",
+        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific retained server compiler version (defaults to 0.6.2). Dotted paths, grouped selections, contextual variants, and the migration diagnostics shown in the illustrative examples are Hew 0.6.1 behaviour. The client transports source and opaque compiler stderr; diagnostic text is compiler-version-dependent.",
         "parameters": [
           {
             "name": "X-Hew-Version",
@@ -118,7 +118,7 @@
             "schema": {
               "type": "string",
               "enum": [
-                "0.6.1",
+                "0.6.2",
                 "0.5.1",
                 "0.4.0",
                 "0.3.0",
@@ -164,7 +164,7 @@
                 "withVersion": {
                   "value": {
                     "source": "fn main() { println(\"hello\"); }",
-                    "compiler_version": "0.6.1"
+                    "compiler_version": "0.6.2"
                   }
                 },
                 "withWasmExecution": {
@@ -204,7 +204,7 @@
                       "stdout": "hello\n",
                       "stderr": "",
                       "elapsed_ms": 18,
-                      "compiler_version": "0.6.1"
+                      "compiler_version": "0.6.2"
                     }
                   },
                   "legacyPathSeparatorRc2": {
@@ -238,7 +238,7 @@
                       "stderr": "",
                       "exit_code": 2,
                       "elapsed_ms": 4,
-                      "compiler_version": "0.6.1"
+                      "compiler_version": "0.6.2"
                     }
                   }
                 }
@@ -499,15 +499,15 @@
           },
           "compiler_version": {
             "type": "string",
-            "description": "Compiler version to use. Defaults to `0.6.1` when omitted.",
+            "description": "Compiler version to use. Defaults to `0.6.2` when omitted.",
             "enum": [
-              "0.6.1",
+              "0.6.2",
               "0.5.1",
               "0.4.0",
               "0.3.0",
               "0.2.0"
             ],
-            "default": "0.6.1"
+            "default": "0.6.2"
           },
           "execution_mode": {
             "type": "string",
@@ -565,7 +565,7 @@
           "compiler_version": {
             "type": "string",
             "description": "The compiler version that was used for this run (e.g. \"0.6.1\").",
-            "example": "0.6.1"
+            "example": "0.6.2"
           }
         }
       },
@@ -685,7 +685,7 @@
           "default_version": {
             "type": "string",
             "description": "The default compiler version used when none is specified.",
-            "example": "0.6.1"
+            "example": "0.6.2"
           },
           "available_versions": {
             "type": "array",
@@ -694,7 +694,7 @@
             },
             "description": "All compiler versions available on this server.",
             "example": [
-              "0.6.1",
+              "0.6.2",
               "0.4.0",
               "0.3.0",
               "0.2.0"
