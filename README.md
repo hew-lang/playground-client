@@ -56,7 +56,10 @@ default requested compiler is `0.6.1`; diagnostic text, codes, and supported syn
 The hosted API runs native programs. It refuses `execution_mode: "wasm"`
 with HTTP 422 and never silently runs the request natively. For local browser
 execution, use `@hew-lang/playground-sandbox`. Its compiler and VM report
-native-only capabilities explicitly.
+capability refusals explicitly. Upgrade those two local engine packages together;
+they do not change the remote compiler selected by this HTTP client. Await both
+clients' `run()` calls and display compiler-authored errors, notes and suggestions
+without translating them into a different set of diagnostic rules.
 
 ## Runtime requirements
 
