@@ -140,7 +140,7 @@ export class HewPlaygroundClient {
     this.fetchImpl = resolved.fetch ?? resolveFetch();
     this.defaultHeaders = resolved.headers;
     this.compilerVersion =
-      resolved.compilerVersion === null ? undefined : (resolved.compilerVersion ?? '0.6.2');
+      resolved.compilerVersion === null ? undefined : (resolved.compilerVersion ?? '0.6.4');
   }
 
   async health(): Promise<string> {

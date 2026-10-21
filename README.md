@@ -7,7 +7,7 @@ Lightweight TypeScript client for the Hew Playground API.
 Install the compiled archive from the versioned public release:
 
 ```bash
-npm install https://github.com/hew-lang/playground-client/releases/download/v0.3.3/hew-lang-playground-client-0.3.3.tgz
+npm install https://github.com/hew-lang/playground-client/releases/download/v0.3.4/hew-lang-playground-client-0.3.4.tgz
 ```
 
 The archive includes JavaScript and TypeScript declarations. It needs no GitHub
@@ -48,7 +48,7 @@ Rust-style turbofish syntax produce migration diagnostics such as
 
 This client neither embeds a compiler nor interprets compiler diagnostics: it
 transports source and preserves opaque compiler stderr from the server. Its
-default requested compiler is `0.6.2`; diagnostic text, codes, and supported syntax remain compiler-version-dependent. Use
+default requested compiler is `0.6.4`; diagnostic text, codes, and supported syntax remain compiler-version-dependent. Use
 `listVersions()` to see which versions the server currently provides.
 
 ## Execution targets
@@ -83,7 +83,7 @@ const client = new HewPlaygroundClient({
 ## Compiler version selection
 
 Every `run()` sends `compiler_version` in the request body. The client
-defaults to `'0.6.2'`; override it client-wide or per request, or pass
+defaults to `'0.6.4'`; override it client-wide or per request, or pass
 `null` to omit the field and let the server pick its default version:
 
 ```ts
@@ -114,7 +114,7 @@ describing their execution tier (`browser` is always `'analysis-only'`;
 | `baseUrl` | `string` | Base URL of the playground server. |
 | `fetch` | `PlaygroundFetch` | Optional custom fetch implementation. |
 | `headers` | `PlaygroundHeadersInit` | Optional default headers added to every request. |
-| `compilerVersion` | `string \| null` | Default `compiler_version` sent on every `run()`. Defaults to `'0.6.2'`; pass `null` to omit it and use the server default. |
+| `compilerVersion` | `string \| null` | Default `compiler_version` sent on every `run()`. Defaults to `'0.6.4'`; pass `null` to omit it and use the server default. |
 
 ## API overview
 
