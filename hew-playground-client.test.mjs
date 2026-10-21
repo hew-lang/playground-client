@@ -62,15 +62,15 @@ test('run without version sends package default version in body', async () => {
     baseUrl: 'https://playground.example',
     fetch: async (url, init) => {
       requests.push({ url, init });
-      return mockJsonResponse({ success: true, stdout: 'hi\n', stderr: '', elapsed_ms: 50, compiler_version: '0.6.1' });
+      return mockJsonResponse({ success: true, stdout: 'hi\n', stderr: '', elapsed_ms: 50, compiler_version: '0.6.2' });
     },
   });
 
   const response = await client.run('fn main() { println("hi"); }');
-  assert.equal(response.compiler_version, '0.6.1');
+  assert.equal(response.compiler_version, '0.6.2');
   const body = JSON.parse(requests[0].init.body);
   assert.equal(body.source, 'fn main() { println("hi"); }');
-  assert.equal(body.compiler_version, '0.6.1');
+  assert.equal(body.compiler_version, '0.6.2');
 });
 
 const dottedSurfaceSource = `import std.io.scanner.{words};
@@ -329,7 +329,7 @@ test('compilerVersion: null omits compiler_version (server default)', async () =
   assert.equal('compiler_version' in body, false);
 });
 
-test('default client sends compiler_version 0.6.1', async () => {
+test('default client sends compiler_version 0.6.2', async () => {
   const requests = [];
   const client = new HewPlaygroundClient({
     baseUrl: 'https://playground.example',
@@ -340,7 +340,7 @@ test('default client sends compiler_version 0.6.1', async () => {
   });
   await client.run('fn main() {}');
   const body = JSON.parse(requests[0].init.body);
-  assert.equal(body.compiler_version, '0.6.1');
+  assert.equal(body.compiler_version, '0.6.2');
 });
 
 test('createShare with compiler_version sends it in the body', async () => {
