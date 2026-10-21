@@ -372,3 +372,26 @@ test('createShare with a string omits compiler_version', async () => {
   assert.equal(body.source, 'fn main() {}');
   assert.equal('compiler_version' in body, false);
 });
+
+
+test('preserves compiler-authored diagnostics and the actual remote version verbatim', async () => {
+  const diagnostic = 'imported/worker.hew:4:7: error: task cannot outlive its scope\n  = note: café is borrowed here\n  = help: await the task before leaving the scope\n';
+  const client = new HewPlaygroundClient({
+    baseUrl: 'https://playground.example',
+    compilerVersion: null,
+    fetch: async (_url, init) => {
+      assert.equal(JSON.parse(init.body).compiler_version, undefined);
+      return mockJsonResponse({
+        success: false,
+        stdout: '',
+        stderr: '',
+        compile_error: diagnostic,
+        elapsed_ms: 1,
+        compiler_version: '0.6.1',
+      });
+    },
+  });
+  const result = await client.run('fn main() {}');
+  assert.equal(result.compile_error, diagnostic);
+  assert.equal(result.compiler_version, '0.6.1');
+});
