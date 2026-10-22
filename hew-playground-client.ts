@@ -103,8 +103,8 @@ export interface PlaygroundClientOptions {
   headers?: PlaygroundHeadersInit;
   /** Default compiler version sent as `compiler_version` in the request body
    *  on every `run()` call. Can be overridden per-request via the
-   *  `compiler_version` field in `RunRequest`. Pass `null` to omit the field
-   *  entirely and let the server choose its default version. */
+   *  `compiler_version` field in `RunRequest`. Omit this option or pass `null`
+   *  to let the server choose its default version. */
   compilerVersion?: string | null;
 }
 
@@ -139,8 +139,7 @@ export class HewPlaygroundClient {
     this.baseUrl = resolved.baseUrl;
     this.fetchImpl = resolved.fetch ?? resolveFetch();
     this.defaultHeaders = resolved.headers;
-    this.compilerVersion =
-      resolved.compilerVersion === null ? undefined : (resolved.compilerVersion ?? '0.6.4');
+    this.compilerVersion = resolved.compilerVersion ?? undefined;
   }
 
   async health(): Promise<string> {
