@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Hew Playground API",
-    "version": "0.11.1",
+    "version": "0.11.2",
     "summary": "HTTP API for compiling, running, listing, and sharing Hew playground programs.",
     "description": "The Hew playground exposes a small JSON-over-HTTP API backed by an identity-verified compiler registry. Dotted paths, grouped selections, contextual variants, and the migration diagnostics shown in the illustrative examples are compiler-version-dependent.",
     "license": {
@@ -104,8 +104,9 @@
                 "examples": {
                   "multiVersion": {
                     "value": {
-                      "default_version": "0.11.1",
+                      "default_version": "0.11.2",
                       "available_versions": [
+                        "0.11.2",
                         "0.11.1",
                         "0.11.0",
                         "0.10.0",
@@ -146,7 +147,7 @@
             "schema": {
               "type": "string",
               "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
-              "example": "0.11.1"
+              "example": "0.11.2"
             }
           }
         ],
@@ -187,7 +188,7 @@
                 "withVersion": {
                   "value": {
                     "source": "fn main() { println(\"hello\"); }",
-                    "compiler_version": "0.11.1"
+                    "compiler_version": "0.11.2"
                   }
                 },
                 "withWasmExecution": {
@@ -227,7 +228,7 @@
                       "stdout": "hello\n",
                       "stderr": "",
                       "elapsed_ms": 18,
-                      "compiler_version": "0.11.1",
+                      "compiler_version": "0.11.2",
                       "execution_mode": "native"
                     }
                   },
@@ -238,7 +239,7 @@
                       "stderr": "",
                       "compile_error": "error: parse error at line 1",
                       "elapsed_ms": 12,
-                      "compiler_version": "0.11.1",
+                      "compiler_version": "0.11.2",
                       "execution_mode": "native"
                     }
                   },
@@ -275,7 +276,7 @@
                       "stderr": "",
                       "exit_code": 2,
                       "elapsed_ms": 4,
-                      "compiler_version": "0.11.1",
+                      "compiler_version": "0.11.2",
                       "execution_mode": "native"
                     }
                   }
@@ -357,7 +358,7 @@
                       "stdout": "",
                       "stderr": "Rate limit exceeded, please wait before trying again",
                       "elapsed_ms": 0,
-                      "compiler_version": "0.11.1"
+                      "compiler_version": "0.11.2"
                     }
                   },
                   "concurrencyLimit": {
@@ -366,7 +367,7 @@
                       "stdout": "",
                       "stderr": "Too many concurrent requests, please try again",
                       "elapsed_ms": 0,
-                      "compiler_version": "0.11.1"
+                      "compiler_version": "0.11.2"
                     }
                   }
                 }
@@ -403,7 +404,7 @@
             "schema": {
               "type": "string",
               "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
-              "example": "0.11.1"
+              "example": "0.11.2"
             }
           }
         ],
@@ -741,7 +742,7 @@
             "type": ["string", "null"],
             "description": "Optional installed compiler version; when omitted or null, falls back to X-Hew-Version and then the first authenticated worker capability. Values must exactly match an available worker compiler.",
             "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
-            "example": "0.11.1"
+            "example": "0.11.2"
           },
           "list_only": {
             "type": "boolean",
@@ -770,7 +771,7 @@
             "type": ["string", "null"],
             "description": "Compiler version to use. When omitted or null, falls back to X-Hew-Version and then the first authenticated worker capability. Values must exactly match an available worker compiler.",
             "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
-            "example": "0.11.1"
+            "example": "0.11.2"
           },
           "execution_mode": {
             "type": ["string", "null"],
@@ -828,7 +829,7 @@
           "compiler_version": {
             "type": "string",
             "description": "The identity-verified compiler version used for this run; absent when validation or unavailable worker capabilities rejected the request before compiler selection.",
-            "example": "0.11.1"
+            "example": "0.11.2"
           },
           "execution_mode": {
             "type": "string",
@@ -960,7 +961,7 @@
           "default_version": {
             "type": "string",
             "description": "The default compiler version used when none is specified.",
-            "example": "0.11.1"
+            "example": "0.11.2"
           },
           "available_versions": {
             "type": "array",
@@ -969,6 +970,7 @@
             },
             "description": "All startup-validated compiler versions in descending semantic-version order.",
             "example": [
+              "0.11.2",
               "0.11.1",
               "0.11.0",
               "0.10.0",
