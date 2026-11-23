@@ -56,8 +56,9 @@ which versions the server currently provides.
 
 The hosted API runs native programs (`execution_mode: "native"`). It refuses
 `execution_mode: "wasm"` with HTTP 422 and never silently runs the request
-natively. Successful `RunResponse` payloads always report
-`execution_mode: "native"`.
+natively. Admitted `RunResponse` payloads (HTTP 200) always report
+`execution_mode: "native"`; `execution_mode` is absent when validation or
+control-plane admission rejected the request.
 
 For local browser execution, use `@hew-lang/playground-sandbox`. Its compiler
 and VM report capability refusals explicitly. Upgrade those two local engine
@@ -107,8 +108,9 @@ const tracking = new HewPlaygroundClient({
   compilerVersion: null,
 });
 
-// Per-request override
+// Per-request override (explicit null selects the server default)
 await pinned.run({ source: 'fn main() {}', compiler_version: '0.10.0' });
+await pinned.run({ source: 'fn main() {}', compiler_version: null });
 ```
 
 Examples returned by `listExamples()` carry a `capabilities` object
@@ -122,8 +124,12 @@ const runnableInWasi = examples.filter((example) => example.capabilities.wasi ==
 
 ## Running tests
 
-`test()` calls `POST /api/test` and parses the server's `application/x-ndjson`
-event stream into a `TestResponse`:
+`test()` calls `POST /api/test` (requiring compiler `>= 0.7.0`) and parses the
+server's `application/x-ndjson` event stream into a `TestResponse`.
+`test_discovered` events emit `identity` values formatted as `<file>::<name>`;
+pass only the bare identifier (`entry.identity.split('::').pop()`) in
+`TestRequest.test`. A source file without `#[test]` functions exits non-zero and
+resolves with `{ success: false, error: "No test functions found.\n" }`:
 
 ```ts
 const discovered = await client.test({
@@ -135,7 +141,7 @@ fn adds() {
 `,
   list_only: true,
 });
-console.log(discovered.discovered.map((entry) => entry.identity));
+const bareName = discovered.discovered[0]?.identity.split('::').pop();
 
 const report = await client.test({
   source: `
@@ -144,7 +150,7 @@ fn adds() {
   assert(2 + 2 == 4);
 }
 `,
-  test: 'adds',
+  test: bareName ?? 'adds',
 });
 console.log(report.success, report.passed, report.failed);
 ```
@@ -175,13 +181,13 @@ The client mirrors the HTTP API with typed methods:
 The package exports these request/response types:
 
 - `ExecutionMode`, `RunRequest`, `RunResponse`
-- `TestRequest`, `TestResponse`, `TestEvent`, `TestOutcome`, `TestReport`
+- `TestRequest`, `TestResponse`, `TestEvent`, `TestOutcome`, `TestReport`, `TestReportSite`, `TestReportAssertion`
 - `TestDiscoveredEvent`, `TestRunStartedEvent`, `TestFileCompiledEvent`, `TestStartedEvent`, `TestFinishedEvent`, `TestRunFinishedEvent`, `TestErrorEvent`
 - `Example`, `ExampleCapabilities`, `BrowserExampleCapability`, `WasiExampleCapability`
 - `ShareRequest`, `ShareResponse`, `ShareGetResponse`
 - `VersionsResponse`
 - `ErrorResponse`
-- `PlaygroundClientOptions`
+- `PlaygroundClientOptions`, `PlaygroundFetch`, `PlaygroundRequestInit`, `PlaygroundResponseLike`, `PlaygroundResponseHeaders`, `PlaygroundHeadersInit`, `PlaygroundHeadersLike`
 - `PlaygroundApiError`
 
 It also exports the `createHewPlaygroundClient()` factory and the

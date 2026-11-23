@@ -145,7 +145,7 @@
             "description": "Alternative version selector. The body field takes priority. Labels must exactly match a currently available worker compiler.",
             "schema": {
               "type": "string",
-              "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
               "example": "0.11.1"
             }
           }
@@ -284,7 +284,7 @@
             }
           },
           "400": {
-            "description": "The JSON body parsed successfully, but validation failed (for example, `source` exceeded 64 KiB or `compiler_version` / `X-Hew-Version` was empty or unsupported). Malformed JSON may also be rejected by Axum before the handler runs.",
+            "description": "Validation failed (`source` exceeded 64 KiB or `compiler_version` / `X-Hew-Version` was empty or unsupported) returning `application/json`, or Axum rejected malformed JSON (`JsonSyntaxError`) with `text/plain`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -300,21 +300,45 @@
                     }
                   }
                 }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
           "413": {
-            "description": "The total HTTP request body exceeded the Axum body limit before handler execution."
+            "description": "The total HTTP request body exceeded the Axum body limit before handler execution.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "415": {
-            "description": "The request body was not sent as JSON."
+            "description": "The request body did not carry an `application/json` content type.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Server-side WASM execution is unavailable. `execution_mode: wasm` is accepted in the request schema for compatibility but is never dispatched or converted to native execution.",
+            "description": "Server-side WASM execution is unavailable (`application/json` `RunResponse`; `execution_mode: wasm` is accepted for compatibility and never converted to native execution), or Axum rejected valid JSON that failed `RunRequest` deserialization (`text/plain` `JsonDataError`).",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RunResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -332,7 +356,8 @@
                       "success": false,
                       "stdout": "",
                       "stderr": "Rate limit exceeded, please wait before trying again",
-                      "elapsed_ms": 0
+                      "elapsed_ms": 0,
+                      "compiler_version": "0.11.1"
                     }
                   },
                   "concurrencyLimit": {
@@ -340,7 +365,8 @@
                       "success": false,
                       "stdout": "",
                       "stderr": "Too many concurrent requests, please try again",
-                      "elapsed_ms": 0
+                      "elapsed_ms": 0,
+                      "compiler_version": "0.11.1"
                     }
                   }
                 }
@@ -376,7 +402,7 @@
             "description": "Alternative version selector. The body field takes priority. Labels must exactly match a currently available worker compiler.",
             "schema": {
               "type": "string",
-              "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
               "example": "0.11.1"
             }
           }
@@ -403,9 +429,14 @@
             }
           },
           "400": {
-            "description": "Invalid source, test selection, or compiler selection. Returns one NDJSON `{\"event\":\"error\",\"message\":...}` line.",
+            "description": "Invalid source, test selection, or compiler selection returning one NDJSON `{\"event\":\"error\",\"message\":...}` line (`application/x-ndjson`), or malformed JSON rejected by Axum (`text/plain` `JsonSyntaxError`).",
             "content": {
               "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/plain": {
                 "schema": {
                   "type": "string"
                 }
@@ -413,10 +444,34 @@
             }
           },
           "413": {
-            "description": "The total HTTP request body exceeded the Axum body limit before handler execution."
+            "description": "The total HTTP request body exceeded the Axum body limit before handler execution.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "415": {
-            "description": "The request body was not sent as JSON."
+            "description": "The request body did not carry an `application/json` content type.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Valid JSON failed `TestRequest` deserialization (rejected by Axum `JsonDataError`).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "429": {
             "description": "Rate or concurrency limit exceeded. Returns one NDJSON `{\"event\":\"error\",\"message\":...}` line.",
@@ -525,7 +580,7 @@
             }
           },
           "400": {
-            "description": "The JSON body parsed successfully, but the `source` field exceeded 64 KiB.",
+            "description": "Validation failed (`source` exceeded 64 KiB) returning `application/json` (`{ \"id\": \"\" }`), or malformed JSON rejected by Axum (`text/plain` `JsonSyntaxError`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -538,20 +593,77 @@
                     }
                   }
                 }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
           "413": {
-            "description": "The total HTTP request body exceeded the Axum body limit before handler execution."
+            "description": "The total HTTP request body exceeded the Axum body limit before handler execution.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "415": {
-            "description": "The request body was not sent as JSON."
+            "description": "The request body did not carry an `application/json` content type.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Valid JSON failed `ShareRequest` deserialization (rejected by Axum `JsonDataError`).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "429": {
-            "description": "Per-IP share rate limit exhausted; retry later. Body shape matches 400 (`{ \"id\": \"\" }`) \u2014 distinguish by status."
+            "description": "Per-IP share rate limit exhausted; retry later. Returns JSON `{\"id\":\"\"}` — distinguish by status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareResponse"
+                },
+                "examples": {
+                  "rateLimited": {
+                    "value": {
+                      "id": ""
+                    }
+                  }
+                }
+              }
+            }
           },
           "503": {
-            "description": "Share store at capacity; snippet rejected. Body shape matches 400 (`{ \"id\": \"\" }`) \u2014 distinguish by status."
+            "description": "Share store at capacity; snippet rejected. Returns JSON `{\"id\":\"\"}` — distinguish by status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareResponse"
+                },
+                "examples": {
+                  "storeFull": {
+                    "value": {
+                      "id": ""
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -617,7 +729,6 @@
     "schemas": {
       "TestRequest": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "source"
         ],
@@ -627,9 +738,9 @@
             "description": "Hew source, at most 64 KiB."
           },
           "compiler_version": {
-            "type": "string",
-            "description": "Optional installed compiler version; defaults to the first authenticated worker capability. Values must exactly match an available worker compiler.",
-            "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
+            "type": ["string", "null"],
+            "description": "Optional installed compiler version; when omitted or null, falls back to X-Hew-Version and then the first authenticated worker capability. Values must exactly match an available worker compiler.",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
             "example": "0.11.1"
           },
           "list_only": {
@@ -638,7 +749,7 @@
             "description": "Emit test_discovered events without executing tests."
           },
           "test": {
-            "type": "string",
+            "type": ["string", "null"],
             "maxLength": 128,
             "pattern": "^[A-Za-z0-9_]+$",
             "description": "Optional bare test identifier returned by discovery (max 128 ASCII alphanumeric or underscore characters; disallowed when `list_only` is true)."
@@ -647,7 +758,6 @@
       },
       "RunRequest": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "source"
         ],
@@ -657,20 +767,20 @@
             "description": "Hew source code. The handler rejects strings larger than 64 KiB."
           },
           "compiler_version": {
-            "type": "string",
-            "description": "Compiler version to use. Defaults to the first authenticated worker capability. Values must exactly match an available worker compiler.",
-            "pattern": "^\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?$",
-            "example": "0.11.1",
-            "default": "0.11.1"
+            "type": ["string", "null"],
+            "description": "Compiler version to use. When omitted or null, falls back to X-Hew-Version and then the first authenticated worker capability. Values must exactly match an available worker compiler.",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
+            "example": "0.11.1"
           },
           "execution_mode": {
-            "type": "string",
+            "type": ["string", "null"],
             "enum": [
               "native",
-              "wasm"
+              "wasm",
+              null
             ],
             "default": "native",
-            "description": "Execution lane. \"native\" is the only server-side execution mode. \"wasm\" remains in this request schema for compatibility and returns HTTP 422 without native fallback."
+            "description": "Execution lane. \"native\" (or omitted/null) is the only server-side execution mode. \"wasm\" remains in this request schema for compatibility and returns HTTP 422 without native fallback."
           }
         }
       },
@@ -686,7 +796,7 @@
         "properties": {
           "success": {
             "type": "boolean",
-            "description": "True when `hew run` completed normally. A non-zero program return value still counts as success."
+            "description": "True when `hew build` and native execution completed normally. A non-zero program return value still counts as success."
           },
           "stdout": {
             "type": "string",
@@ -698,7 +808,7 @@
           },
           "compile_error": {
             "type": "string",
-            "description": "Opaque compiler stderr, present only when the Hew compiler exits with its dedicated compile-error code."
+            "description": "Opaque compiler stderr, present only when `hew build` exits non-zero."
           },
           "exit_code": {
             "type": "integer",
@@ -717,7 +827,7 @@
           },
           "compiler_version": {
             "type": "string",
-            "description": "The identity-verified compiler version used for this run; absent when validation rejected the request before compiler selection.",
+            "description": "The identity-verified compiler version used for this run; absent when validation or unavailable worker capabilities rejected the request before compiler selection.",
             "example": "0.11.1"
           },
           "execution_mode": {
@@ -725,7 +835,7 @@
             "enum": [
               "native"
             ],
-            "description": "Successful server-side execution is always native. The field is absent when a request is rejected before execution.",
+            "description": "Admitted server-side runs (HTTP 200) are always native. Absent when validation or control-plane admission rejected the request.",
             "example": "native"
           }
         }
@@ -787,7 +897,6 @@
       },
       "ShareRequest": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "source"
         ],
@@ -795,6 +904,11 @@
           "source": {
             "type": "string",
             "description": "Hew source code to store."
+          },
+          "compiler_version": {
+            "type": ["string", "null"],
+            "deprecated": true,
+            "description": "Deprecated and ignored by the server; snippets store source only. Retained for compatibility with existing SDK callers."
           }
         }
       },
@@ -807,7 +921,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "On success, a 16-character lowercase hexadecimal snippet ID. On oversized requests, the handler returns an empty string with HTTP 400."
+            "description": "On success, a 16-character lowercase hexadecimal snippet ID. On oversized requests (HTTP 400), rate limits (HTTP 429), or a full share store (HTTP 503), the handler returns an empty string."
           }
         }
       },

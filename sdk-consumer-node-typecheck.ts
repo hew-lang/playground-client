@@ -41,18 +41,21 @@ const client = new HewPlaygroundClient({
 });
 
 const mode: ExecutionMode = 'native';
-const runResult = await client.run({ source: 'fn main() {}', execution_mode: mode });
+const runResult = await client.run({ source: 'fn main() {}', compiler_version: null, execution_mode: mode });
 const executedMode: 'native' | undefined = runResult.execution_mode;
 
 await client.createShare({ source: 'fn main() { println(1); }', compiler_version: '0.11.1' });
 
 const [example] = await client.listExamples();
+if (!example) {
+  throw new Error('Expected at least one example.');
+}
 const browserCapability: BrowserExampleCapability = example.capabilities.browser;
 const wasiCapability: WasiExampleCapability = example.capabilities.wasi;
 
 const testRequest: TestRequest = {
   source: '#[test] fn ok() {}',
-  compiler_version: '0.11.1',
+  compiler_version: null,
   list_only: false,
   test: 'ok',
 };
