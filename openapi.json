@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Hew Playground API",
-    "version": "0.6.2",
+    "version": "0.11.1",
     "summary": "HTTP API for compiling, running, listing, and sharing Hew playground programs.",
-    "description": "The Hew playground exposes a small JSON-over-HTTP API. Supports multiple compiler versions (v0.6.2 default, v0.5.1 and v0.4.0 retained, v0.3.0 and v0.2.0 legacy).",
+    "description": "The Hew playground exposes a small JSON-over-HTTP API backed by an identity-verified compiler registry. Dotted paths, grouped selections, contextual variants, and the migration diagnostics shown in the illustrative examples are compiler-version-dependent.",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
@@ -27,7 +27,7 @@
     },
     {
       "name": "execution",
-      "description": "Compile and run Hew programs."
+      "description": "Compile, run, and test Hew programs."
     },
     {
       "name": "examples",
@@ -39,16 +39,17 @@
     }
   ],
   "paths": {
-    "/api/health": {
+    "/live": {
       "get": {
         "tags": [
           "health"
         ],
-        "operationId": "getHealth",
-        "summary": "Health check",
+        "operationId": "getLive",
+        "summary": "Liveness check",
+        "description": "Returns HTTP 200 without checking worker readiness.",
         "responses": {
           "200": {
-            "description": "The server is healthy.",
+            "description": "The API process is alive.",
             "content": {
               "text/plain": {
                 "schema": {
@@ -66,6 +67,24 @@
         }
       }
     },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "operationId": "getHealth",
+        "summary": "Readiness check",
+        "description": "Returns HTTP 200 with an empty body and `Cache-Control: no-store` when usable sandbox worker capabilities are cached, or HTTP 503 otherwise.",
+        "responses": {
+          "200": {
+            "description": "Usable sandbox worker capabilities are cached."
+          },
+          "503": {
+            "description": "No usable sandbox worker capabilities are currently cached."
+          }
+        }
+      }
+    },
     "/api/versions": {
       "get": {
         "tags": [
@@ -73,7 +92,7 @@
         ],
         "operationId": "getVersions",
         "summary": "List available compiler versions",
-        "description": "Returns the default compiler version and all versions available on this server.",
+        "description": "Returns the startup-validated default and all installed compiler versions in semver-descending order.",
         "responses": {
           "200": {
             "description": "Available compiler versions.",
@@ -85,9 +104,15 @@
                 "examples": {
                   "multiVersion": {
                     "value": {
-                      "default_version": "0.6.2",
+                      "default_version": "0.11.1",
                       "available_versions": [
-                        "0.6.2",
+                        "0.11.1",
+                        "0.11.0",
+                        "0.10.0",
+                        "0.9.3",
+                        "0.8.0",
+                        "0.7.0",
+                        "0.5.1",
                         "0.4.0",
                         "0.3.0",
                         "0.2.0"
@@ -97,6 +122,9 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "No usable sandbox worker capabilities are currently cached."
           }
         }
       }
@@ -108,22 +136,17 @@
         ],
         "operationId": "runCode",
         "summary": "Compile and run Hew source code",
-        "description": "Normal program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. Use `compiler_version` to target a specific retained server compiler version (defaults to 0.6.2). Dotted paths, grouped selections, contextual variants, and the migration diagnostics shown in the illustrative examples are Hew 0.6.1 behaviour. The client transports source and opaque compiler stderr; diagnostic text is compiler-version-dependent.",
+        "description": "Normal native program results return HTTP 200 even when compilation fails or the program exits unsuccessfully. Resource and validation failures use non-2xx status codes. The worker's authenticated capabilities select the default and available labels. The client transports source and opaque compiler stderr; diagnostic text is compiler-version-dependent.",
         "parameters": [
           {
             "name": "X-Hew-Version",
             "in": "header",
             "required": false,
-            "description": "Alternative way to specify compiler version. The `compiler_version` field in the request body takes priority.",
+            "description": "Alternative version selector. The body field takes priority. Labels must exactly match a currently available worker compiler.",
             "schema": {
               "type": "string",
-              "enum": [
-                "0.6.2",
-                "0.5.1",
-                "0.4.0",
-                "0.3.0",
-                "0.2.0"
-              ]
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
+              "example": "0.11.1"
             }
           }
         ],
@@ -141,10 +164,10 @@
                   }
                 },
                 "dottedSurface": {
-                  "summary": "Hew 0.6.1 dotted and contextual syntax",
-                  "description": "Illustrative source for Hew 0.6.1. It does not change the retained server compiler versions documented by this API.",
+                  "summary": "Hew dotted and contextual syntax",
+                  "description": "Illustrative source using dotted module paths and contextual enum variants.",
                   "value": {
-                    "source": "import std.io.scanner.{words};\n\nenum Greeting {\n  Message(string);\n}\n\nfn main() {\n  let tokens = words(\"hello\");\n  let greeting: Greeting = .Message(\"hello\");\n  match greeting {\n    .Message(text) => println(text),\n  }\n  println(tokens.len());\n}"
+                    "source": "import std.io.scanner.{words};\n\nenum Greeting {\n  Message(string);\n}\n\nfn main() {\n  let tokens = words(\"hello\");\n  let greeting: Greeting = .Message(\"hello\");\n  match greeting {\n    .Message(text) => println(f\"{text} ({tokens.len()})\"),\n  }\n}"
                   }
                 },
                 "legacyPathSeparatorRc2": {
@@ -164,7 +187,7 @@
                 "withVersion": {
                   "value": {
                     "source": "fn main() { println(\"hello\"); }",
-                    "compiler_version": "0.6.2"
+                    "compiler_version": "0.11.1"
                   }
                 },
                 "withWasmExecution": {
@@ -204,7 +227,19 @@
                       "stdout": "hello\n",
                       "stderr": "",
                       "elapsed_ms": 18,
-                      "compiler_version": "0.6.2"
+                      "compiler_version": "0.11.1",
+                      "execution_mode": "native"
+                    }
+                  },
+                  "compileError": {
+                    "value": {
+                      "success": false,
+                      "stdout": "",
+                      "stderr": "",
+                      "compile_error": "error: parse error at line 1",
+                      "elapsed_ms": 12,
+                      "compiler_version": "0.11.1",
+                      "execution_mode": "native"
                     }
                   },
                   "legacyPathSeparatorRc2": {
@@ -216,7 +251,8 @@
                       "stderr": "",
                       "compile_error": "error: E_PATH_LEGACY_SEPARATOR: `::` path separators have been removed; use dotted paths: `import std.io.scanner.{words};`\n  = help: use the migrated spelling `import std.io.scanner.{words};`",
                       "elapsed_ms": 12,
-                      "compiler_version": "0.6.0-rc2"
+                      "compiler_version": "0.6.0-rc2",
+                      "execution_mode": "native"
                     }
                   },
                   "legacyTurbofishRc2": {
@@ -228,7 +264,8 @@
                       "stderr": "",
                       "compile_error": "error: E_LEGACY_TURBOFISH: Rust-style `::<...>` has been removed; use Hew generic application: `let value = parse<i64>(\"42\");`\n  = help: use the migrated spelling `let value = parse<i64>(\"42\");`",
                       "elapsed_ms": 12,
-                      "compiler_version": "0.6.0-rc2"
+                      "compiler_version": "0.6.0-rc2",
+                      "execution_mode": "native"
                     }
                   },
                   "nonZeroExit": {
@@ -238,7 +275,8 @@
                       "stderr": "",
                       "exit_code": 2,
                       "elapsed_ms": 4,
-                      "compiler_version": "0.6.2"
+                      "compiler_version": "0.11.1",
+                      "execution_mode": "native"
                     }
                   }
                 }
@@ -246,7 +284,7 @@
             }
           },
           "400": {
-            "description": "The JSON body parsed successfully, but the `source` field exceeded 64 KiB. Malformed JSON may also be rejected by Axum before the handler runs.",
+            "description": "Validation failed (`source` exceeded 64 KiB or `compiler_version` / `X-Hew-Version` was empty or unsupported) returning `application/json`, or Axum rejected malformed JSON (`JsonSyntaxError`) with `text/plain`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -262,14 +300,48 @@
                     }
                   }
                 }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
           "413": {
-            "description": "The total HTTP request body exceeded the Axum body limit before handler execution."
+            "description": "The total HTTP request body exceeded the Axum body limit before handler execution.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "415": {
-            "description": "The request body was not sent as JSON."
+            "description": "The request body did not carry an `application/json` content type.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Server-side WASM execution is unavailable (`application/json` `RunResponse`; `execution_mode: wasm` is accepted for compatibility and never converted to native execution), or Axum rejected valid JSON that failed `RunRequest` deserialization (`text/plain` `JsonDataError`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "429": {
             "description": "The per-IP CPU budget or the concurrent-run limit was exceeded.",
@@ -284,7 +356,8 @@
                       "success": false,
                       "stdout": "",
                       "stderr": "Rate limit exceeded, please wait before trying again",
-                      "elapsed_ms": 0
+                      "elapsed_ms": 0,
+                      "compiler_version": "0.11.1"
                     }
                   },
                   "concurrencyLimit": {
@@ -292,19 +365,130 @@
                       "success": false,
                       "stdout": "",
                       "stderr": "Too many concurrent requests, please try again",
-                      "elapsed_ms": 0
+                      "elapsed_ms": 0,
+                      "compiler_version": "0.11.1"
                     }
                   }
                 }
               }
             }
           },
-          "500": {
-            "description": "Internal sandbox or process-launch error.",
+          "503": {
+            "description": "The private worker is unavailable or incompatible. The response contains a correlated generic error without control-plane details.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RunResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/test": {
+      "post": {
+        "tags": [
+          "execution"
+        ],
+        "operationId": "runTests",
+        "summary": "Discover or run Hew tests in one source file",
+        "description": "Returns the same newline-delimited JSON events as `hew test --format json`. Events stream as the isolated native test process runs. Requests share the /api/run source, rate, concurrency and resource controls, with a 30-second total test deadline. Test failures are reported in events and return HTTP 200. A compile error, timeout or worker failure ends the stream with one `{\"event\":\"error\",\"message\":...}` line.",
+        "parameters": [
+          {
+            "name": "X-Hew-Version",
+            "in": "header",
+            "required": false,
+            "description": "Alternative version selector. The body field takes priority. Labels must exactly match a currently available worker compiler.",
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
+              "example": "0.11.1"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test discovery or run events, one JSON object per line.",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source, test selection, or compiler selection returning one NDJSON `{\"event\":\"error\",\"message\":...}` line (`application/x-ndjson`), or malformed JSON rejected by Axum (`text/plain` `JsonSyntaxError`).",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The total HTTP request body exceeded the Axum body limit before handler execution.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "The request body did not carry an `application/json` content type.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Valid JSON failed `TestRequest` deserialization (rejected by Axum `JsonDataError`).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate or concurrency limit exceeded. Returns one NDJSON `{\"event\":\"error\",\"message\":...}` line.",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No compatible sandbox worker is ready. Returns one NDJSON `{\"event\":\"error\",\"message\":...}` line.",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -396,7 +580,7 @@
             }
           },
           "400": {
-            "description": "The JSON body parsed successfully, but the `source` field exceeded 64 KiB.",
+            "description": "Validation failed (`source` exceeded 64 KiB) returning `application/json` (`{ \"id\": \"\" }`), or malformed JSON rejected by Axum (`text/plain` `JsonSyntaxError`).",
             "content": {
               "application/json": {
                 "schema": {
@@ -409,20 +593,77 @@
                     }
                   }
                 }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
           "413": {
-            "description": "The total HTTP request body exceeded the Axum body limit before handler execution."
+            "description": "The total HTTP request body exceeded the Axum body limit before handler execution.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "415": {
-            "description": "The request body was not sent as JSON."
+            "description": "The request body did not carry an `application/json` content type.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Valid JSON failed `ShareRequest` deserialization (rejected by Axum `JsonDataError`).",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "429": {
-            "description": "Per-IP share rate limit exhausted; retry later. Body shape matches 400 (`{ \"id\": \"\" }`) \u2014 distinguish by status."
+            "description": "Per-IP share rate limit exhausted; retry later. Returns JSON `{\"id\":\"\"}` — distinguish by status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareResponse"
+                },
+                "examples": {
+                  "rateLimited": {
+                    "value": {
+                      "id": ""
+                    }
+                  }
+                }
+              }
+            }
           },
           "503": {
-            "description": "Share store at capacity; snippet rejected. Body shape matches 400 (`{ \"id\": \"\" }`) \u2014 distinguish by status."
+            "description": "Share store at capacity; snippet rejected. Returns JSON `{\"id\":\"\"}` — distinguish by status.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareResponse"
+                },
+                "examples": {
+                  "storeFull": {
+                    "value": {
+                      "id": ""
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -486,37 +727,60 @@
   },
   "components": {
     "schemas": {
-      "RunRequest": {
+      "TestRequest": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "source"
         ],
         "properties": {
           "source": {
             "type": "string",
-            "description": "Hew source code. Dotted paths, `.{ }` grouped selections, and contextual variants (for example, `.Ready`) are Hew 0.6.1 syntax examples; the retained server compiler version determines accepted syntax. The handler rejects strings larger than 64 KiB."
+            "description": "Hew source, at most 64 KiB."
           },
           "compiler_version": {
+            "type": ["string", "null"],
+            "description": "Optional installed compiler version; when omitted or null, falls back to X-Hew-Version and then the first authenticated worker capability. Values must exactly match an available worker compiler.",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
+            "example": "0.11.1"
+          },
+          "list_only": {
+            "type": "boolean",
+            "default": false,
+            "description": "Emit test_discovered events without executing tests."
+          },
+          "test": {
+            "type": ["string", "null"],
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9_]+$",
+            "description": "Optional bare test identifier returned by discovery (max 128 ASCII alphanumeric or underscore characters; disallowed when `list_only` is true)."
+          }
+        }
+      },
+      "RunRequest": {
+        "type": "object",
+        "required": [
+          "source"
+        ],
+        "properties": {
+          "source": {
             "type": "string",
-            "description": "Compiler version to use. Defaults to `0.6.2` when omitted.",
-            "enum": [
-              "0.6.2",
-              "0.5.1",
-              "0.4.0",
-              "0.3.0",
-              "0.2.0"
-            ],
-            "default": "0.6.2"
+            "description": "Hew source code. The handler rejects strings larger than 64 KiB."
+          },
+          "compiler_version": {
+            "type": ["string", "null"],
+            "description": "Compiler version to use. When omitted or null, falls back to X-Hew-Version and then the first authenticated worker capability. Values must exactly match an available worker compiler.",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$",
+            "example": "0.11.1"
           },
           "execution_mode": {
-            "type": "string",
+            "type": ["string", "null"],
             "enum": [
               "native",
-              "wasm"
+              "wasm",
+              null
             ],
             "default": "native",
-            "description": "Execution lane. \"native\" (default) compiles and runs as a subprocess. \"wasm\" is refused with HTTP 422. Use @hew-lang/playground-sandbox for local browser execution; the server never falls back to native."
+            "description": "Execution lane. \"native\" (or omitted/null) is the only server-side execution mode. \"wasm\" remains in this request schema for compatibility and returns HTTP 422 without native fallback."
           }
         }
       },
@@ -527,13 +791,12 @@
           "success",
           "stdout",
           "stderr",
-          "elapsed_ms",
-          "compiler_version"
+          "elapsed_ms"
         ],
         "properties": {
           "success": {
             "type": "boolean",
-            "description": "True when `hew run` completed normally. A non-zero program return value still counts as success."
+            "description": "True when `hew build` and native execution completed normally. A non-zero program return value still counts as success."
           },
           "stdout": {
             "type": "string",
@@ -545,7 +808,7 @@
           },
           "compile_error": {
             "type": "string",
-            "description": "Opaque compiler stderr, present only when the Hew compiler exits with its dedicated compile-error code. The client does not interpret or generate diagnostics. For example, Hew 0.6.1 reports `E_PATH_LEGACY_SEPARATOR` for `::` paths and `E_LEGACY_TURBOFISH` for Rust-style turbofish; codes, text, and source-location context are compiler-version-dependent."
+            "description": "Opaque compiler stderr, present only when `hew build` exits non-zero."
           },
           "exit_code": {
             "type": "integer",
@@ -564,8 +827,16 @@
           },
           "compiler_version": {
             "type": "string",
-            "description": "The compiler version that was used for this run (e.g. \"0.6.1\").",
-            "example": "0.6.2"
+            "description": "The identity-verified compiler version used for this run; absent when validation or unavailable worker capabilities rejected the request before compiler selection.",
+            "example": "0.11.1"
+          },
+          "execution_mode": {
+            "type": "string",
+            "enum": [
+              "native"
+            ],
+            "description": "Admitted server-side runs (HTTP 200) are always native. Absent when validation or control-plane admission rejected the request.",
+            "example": "native"
           }
         }
       },
@@ -588,7 +859,7 @@
           },
           "category": {
             "type": "string",
-            "description": "Title-cased category derived from the example name."
+            "description": "Category name from the playground manifest, or title-cased directory name in legacy layout."
           },
           "source": {
             "type": "string"
@@ -626,7 +897,6 @@
       },
       "ShareRequest": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "source"
         ],
@@ -634,6 +904,11 @@
           "source": {
             "type": "string",
             "description": "Hew source code to store."
+          },
+          "compiler_version": {
+            "type": ["string", "null"],
+            "deprecated": true,
+            "description": "Deprecated and ignored by the server; snippets store source only. Retained for compatibility with existing SDK callers."
           }
         }
       },
@@ -646,7 +921,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "On success, a 16-character lowercase hexadecimal snippet ID. On oversized requests, the handler returns an empty string with HTTP 400."
+            "description": "On success, a 16-character lowercase hexadecimal snippet ID. On oversized requests (HTTP 400), rate limits (HTTP 429), or a full share store (HTTP 503), the handler returns an empty string."
           }
         }
       },
@@ -685,16 +960,22 @@
           "default_version": {
             "type": "string",
             "description": "The default compiler version used when none is specified.",
-            "example": "0.6.2"
+            "example": "0.11.1"
           },
           "available_versions": {
             "type": "array",
             "items": {
               "type": "string"
             },
-            "description": "All compiler versions available on this server.",
+            "description": "All startup-validated compiler versions in descending semantic-version order.",
             "example": [
-              "0.6.2",
+              "0.11.1",
+              "0.11.0",
+              "0.10.0",
+              "0.9.3",
+              "0.8.0",
+              "0.7.0",
+              "0.5.1",
               "0.4.0",
               "0.3.0",
               "0.2.0"
