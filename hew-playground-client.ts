@@ -1,11 +1,15 @@
+export type ExecutionMode = 'native' | 'wasm';
+
 export interface RunRequest {
   source: string;
-  /** Request a specific compiler version (e.g. `"0.2.0"`). Overrides the
+  /** Request a specific compiler version (e.g. `"0.11.1"`). Overrides the
    *  client-wide `compilerVersion` and the `X-Hew-Version` header. */
   compiler_version?: string;
-  /** Native execution is the server default. The server refuses `"wasm"`
-   *  with HTTP 422; use playground-sandbox for browser execution. */
-  execution_mode?: 'native' | 'wasm';
+  /** Request a specific execution lane. `"native"` is the default. `"wasm"`
+   *  remains accepted for compatibility, but the server rejects it with HTTP
+   *  422 and never falls back to native execution. Use `@hew-lang/playground-sandbox`
+   *  for local browser execution. */
+  execution_mode?: ExecutionMode;
 }
 
 export interface RunResponse {
@@ -18,19 +22,141 @@ export interface RunResponse {
   profile?: string;
   /** The compiler version that was used for this run. */
   compiler_version?: string;
-  /** The execution lane that actually handled the request. Reports what ran,
-   *  not what was requested. A refused `"wasm"` request never falls back to
-   *  native execution. Absent when the request was
-   *  rejected before an execution lane was selected, and on responses from
-   *  servers that predate the field. */
-  execution_mode?: 'native' | 'wasm';
+  /** Successful server-side runs are always native. Absent when validation or
+   *  control-plane admission rejected the request, and on older servers. */
+  execution_mode?: 'native';
 }
+
+export interface TestRequest {
+  source: string;
+  /** Request a specific compiler version (e.g. `"0.11.1"`). Overrides the
+   *  client-wide `compilerVersion` and the `X-Hew-Version` header. */
+  compiler_version?: string;
+  /** Emit `test_discovered` events without executing tests. */
+  list_only?: boolean;
+  /** Run only this single test (bare identifier from discovery; disallowed when
+   *  `list_only` is true). */
+  test?: string;
+}
+
+export type TestOutcome = 'passed' | 'failed' | 'ignored';
+
+export interface TestReportSite {
+  file: string;
+  line: number;
+  col: number;
+}
+
+export interface TestReportAssertion {
+  operator: string;
+  left: string;
+  right: string;
+}
+
+export interface TestReport {
+  outcome: string;
+  status: number;
+  fault_kind: string | null;
+  fault_code?: number | null;
+  message?: string | null;
+  site?: TestReportSite | null;
+  assertion?: TestReportAssertion | null;
+  schedule?: string | null;
+  seed?: string | null;
+  steps?: number | null;
+  virtual_time_ms?: number | null;
+  [key: string]: unknown;
+}
+
+export interface TestDiscoveredEvent {
+  event: 'test_discovered';
+  identity: string;
+  selector: string;
+  ignored: boolean;
+  ignore_reason: string | null;
+}
+
+export interface TestRunStartedEvent {
+  event: 'run_started';
+  tests: number;
+}
+
+export interface TestFileCompiledEvent {
+  event: 'file_compiled';
+  file: string;
+  tests: string[];
+  ok: boolean;
+  diagnostics: string | null;
+}
+
+export interface TestStartedEvent {
+  event: 'test_started';
+  identity: string;
+  selector: string;
+}
+
+export interface TestFinishedEvent {
+  event: 'test_finished';
+  identity: string;
+  selector: string;
+  outcome: TestOutcome;
+  kind: string | null;
+  message: string | null;
+  reason: string | null;
+  duration_ms: number;
+  output: string;
+  report: TestReport | null;
+}
+
+export interface TestRunFinishedEvent {
+  event: 'run_finished';
+  passed: number;
+  failed: number;
+  ignored: number;
+}
+
+export interface TestErrorEvent {
+  event: 'error';
+  message: string;
+}
+
+export type TestEvent =
+  | TestDiscoveredEvent
+  | TestRunStartedEvent
+  | TestFileCompiledEvent
+  | TestStartedEvent
+  | TestFinishedEvent
+  | TestRunFinishedEvent
+  | TestErrorEvent;
+
+export interface TestResponse {
+  /** True when execution completed without test failures or stream errors (or,
+   *  for `list_only`, when discovery completed without a stream error). */
+  success: boolean;
+  /** Ordered NDJSON events emitted by `POST /api/test`. */
+  events: TestEvent[];
+  /** Discovered tests from `test_discovered` events. */
+  discovered: TestDiscoveredEvent[];
+  /** Completed test case results from `test_finished` events. */
+  tests: TestFinishedEvent[];
+  /** Count of passed tests from `run_finished` (or `test_finished` fallback). */
+  passed: number;
+  /** Count of failed tests from `run_finished` (or `test_finished` fallback). */
+  failed: number;
+  /** Count of ignored tests from `run_finished` (or `test_finished` fallback). */
+  ignored: number;
+  /** Stream error message when an `{"event":"error"}` line terminated the stream. */
+  error?: string;
+}
+
+export type BrowserExampleCapability = 'analysis-only';
+export type WasiExampleCapability = 'runnable' | 'unsupported';
 
 export interface ExampleCapabilities {
   /** Browser capability — the browser lane exposes analysis only. */
-  browser: 'analysis-only';
+  browser: BrowserExampleCapability;
   /** WASI capability: `runnable` executes under wasm32-wasi. */
-  wasi: 'runnable' | 'unsupported';
+  wasi: WasiExampleCapability;
 }
 
 export interface Example {
@@ -102,9 +228,9 @@ export interface PlaygroundClientOptions {
   fetch?: PlaygroundFetch;
   headers?: PlaygroundHeadersInit;
   /** Default compiler version sent as `compiler_version` in the request body
-   *  on every `run()` call. Can be overridden per-request via the
-   *  `compiler_version` field in `RunRequest`. Omit this option or pass `null`
-   *  to let the server choose its default version. */
+   *  on every `run()` and `test()` call. Can be overridden per-request via
+   *  `compiler_version`. Omit this option or pass `null` to let the server
+   *  choose its default version. */
   compilerVersion?: string | null;
 }
 
@@ -162,6 +288,15 @@ export class HewPlaygroundClient {
     });
   }
 
+  async test(request: TestRequest | string): Promise<TestResponse> {
+    const body = normalizeTestRequest(request, this.compilerVersion);
+    const events = await this.requestNdjson('POST /api/test', '/api/test', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+    return buildTestResponse(events);
+  }
+
   async listVersions(): Promise<VersionsResponse> {
     return this.requestJson<VersionsResponse>('GET /api/versions', '/api/versions', {
       method: 'GET',
@@ -188,16 +323,7 @@ export class HewPlaygroundClient {
   }
 
   private async requestJson<T>(label: string, path: string, init: PlaygroundRequestInit): Promise<T> {
-    const headers = init.body === undefined
-      ? mergeHeaders(this.defaultHeaders, init.headers)
-      : mergeHeaders(this.defaultHeaders, init.headers, {
-          'content-type': 'application/json',
-        });
-    const response = await this.fetchImpl(this.url(path), {
-      ...init,
-      headers,
-    });
-
+    const response = await this.send(path, init);
     const raw = await response.text();
     const body = parseBody(response, raw);
     if (!response.ok) {
@@ -207,6 +333,32 @@ export class HewPlaygroundClient {
       throw new Error(`${label} returned an unexpected non-JSON success body.`);
     }
     return body as T;
+  }
+
+  private async requestNdjson(label: string, path: string, init: PlaygroundRequestInit): Promise<TestEvent[]> {
+    const response = await this.send(path, init);
+    const raw = await response.text();
+    if (!response.ok) {
+      const errorBody = parseErrorBody(response, raw);
+      throw new PlaygroundApiError(response, errorBody, buildErrorMessage(label, response.status, errorBody));
+    }
+    const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
+    if (raw.trim().length === 0 || (!contentType.includes('ndjson') && !contentType.includes('json'))) {
+      throw new Error(`${label} returned an unexpected non-NDJSON success body.`);
+    }
+    return parseNdjsonEvents(raw);
+  }
+
+  private async send(path: string, init: PlaygroundRequestInit): Promise<PlaygroundResponseLike> {
+    const headers = init.body === undefined
+      ? mergeHeaders(this.defaultHeaders, init.headers)
+      : mergeHeaders(this.defaultHeaders, init.headers, {
+          'content-type': 'application/json',
+        });
+    return this.fetchImpl(this.url(path), {
+      ...init,
+      headers,
+    });
   }
 
   private url(path: string): string {
@@ -241,11 +393,13 @@ function normalizeSource(request: RunRequest | ShareRequest | string): { source:
 function normalizeRunRequest(
   request: RunRequest | string,
   clientVersion?: string,
-): { source: string; compiler_version?: string; execution_mode?: 'native' | 'wasm' } {
+): { source: string; compiler_version?: string; execution_mode?: ExecutionMode } {
   if (typeof request === 'string') {
     return clientVersion ? { source: request, compiler_version: clientVersion } : { source: request };
   }
-  const body: { source: string; compiler_version?: string; execution_mode?: 'native' | 'wasm' } = { source: request.source };
+  const body: { source: string; compiler_version?: string; execution_mode?: ExecutionMode } = {
+    source: request.source,
+  };
   if (request.compiler_version) {
     body.compiler_version = request.compiler_version;
   } else if (clientVersion) {
@@ -253,6 +407,30 @@ function normalizeRunRequest(
   }
   if (request.execution_mode) {
     body.execution_mode = request.execution_mode;
+  }
+  return body;
+}
+
+function normalizeTestRequest(
+  request: TestRequest | string,
+  clientVersion?: string,
+): { source: string; compiler_version?: string; list_only?: boolean; test?: string } {
+  if (typeof request === 'string') {
+    return clientVersion ? { source: request, compiler_version: clientVersion } : { source: request };
+  }
+  const body: { source: string; compiler_version?: string; list_only?: boolean; test?: string } = {
+    source: request.source,
+  };
+  if (request.compiler_version) {
+    body.compiler_version = request.compiler_version;
+  } else if (clientVersion) {
+    body.compiler_version = clientVersion;
+  }
+  if (typeof request.list_only === 'boolean') {
+    body.list_only = request.list_only;
+  }
+  if (request.test !== undefined) {
+    body.test = request.test;
   }
   return body;
 }
@@ -301,24 +479,122 @@ function parseBody(response: PlaygroundResponseLike, raw: string): unknown {
   }
 }
 
+function parseErrorBody(response: PlaygroundResponseLike, raw: string): unknown {
+  if (raw.length === 0) {
+    return null;
+  }
+  const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
+  if (contentType.includes('ndjson')) {
+    try {
+      const events = parseNdjsonEvents(raw);
+      if (events.length === 1) {
+        return events[0];
+      }
+      if (events.length > 1) {
+        return events;
+      }
+      return raw;
+    } catch {
+      return raw;
+    }
+  }
+  if (!contentType.includes('json')) {
+    return raw;
+  }
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return raw;
+  }
+}
+
+function parseNdjsonEvents(raw: string): TestEvent[] {
+  const events: TestEvent[] = [];
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(trimmed) as unknown;
+    } catch (error) {
+      throw new Error(`Response returned invalid NDJSON: ${String(error)}`);
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('Response returned an unexpected non-object NDJSON line.');
+    }
+    events.push(parsed as TestEvent);
+  }
+  if (events.length === 0) {
+    throw new Error('Response returned an empty NDJSON stream.');
+  }
+  return events;
+}
+
+function buildTestResponse(events: TestEvent[]): TestResponse {
+  const discovered: TestDiscoveredEvent[] = [];
+  const tests: TestFinishedEvent[] = [];
+  let runFinished: TestRunFinishedEvent | undefined;
+  let errorEvent: TestErrorEvent | undefined;
+
+  for (const event of events) {
+    switch (event.event) {
+      case 'test_discovered':
+        discovered.push(event);
+        break;
+      case 'test_finished':
+        tests.push(event);
+        break;
+      case 'run_finished':
+        runFinished = event;
+        break;
+      case 'error':
+        errorEvent = event;
+        break;
+      default:
+        break;
+    }
+  }
+
+  const passed = runFinished ? runFinished.passed : tests.filter((t) => t.outcome === 'passed').length;
+  const failed = runFinished ? runFinished.failed : tests.filter((t) => t.outcome === 'failed').length;
+  const ignored = runFinished ? runFinished.ignored : tests.filter((t) => t.outcome === 'ignored').length;
+
+  return {
+    success: errorEvent === undefined && failed === 0,
+    events,
+    discovered,
+    tests,
+    passed,
+    failed,
+    ignored,
+    ...(errorEvent !== undefined ? { error: errorEvent.message } : {}),
+  };
+}
+
 function buildErrorMessage(label: string, status: number, body: unknown): string {
   if (typeof body === 'string' && body.trim().length > 0) {
     return `${label} failed with ${status}: ${body}`;
   }
   if (body && typeof body === 'object') {
-    if ('error' in body && typeof (body as Record<string, unknown>).error === 'string') {
-      return `${label} failed with ${status}: ${(body as Record<string, unknown>).error as string}`;
+    const record = body as Record<string, unknown>;
+    if ('error' in record && typeof record.error === 'string') {
+      return `${label} failed with ${status}: ${record.error}`;
     }
-    if ('stderr' in body && typeof (body as Record<string, unknown>).stderr === 'string') {
-      const stderr = ((body as Record<string, unknown>).stderr as string).trim();
+    if (record.event === 'error' && 'message' in record && typeof record.message === 'string') {
+      return `${label} failed with ${status}: ${record.message}`;
+    }
+    if ('stderr' in record && typeof record.stderr === 'string') {
+      const stderr = record.stderr.trim();
       if (stderr.length > 0) {
         return `${label} failed with ${status}: ${stderr}`;
       }
     }
-    if ('compile_error' in body && typeof (body as Record<string, unknown>).compile_error === 'string') {
-      return `${label} failed with ${status}: ${(body as Record<string, unknown>).compile_error as string}`;
+    if ('compile_error' in record && typeof record.compile_error === 'string') {
+      return `${label} failed with ${status}: ${record.compile_error}`;
     }
-    if ('id' in body && (body as Record<string, unknown>).id === '') {
+    if (status === 400 && 'id' in record && record.id === '') {
       return `${label} failed with ${status}: source exceeds the 64 KiB limit`;
     }
   }
