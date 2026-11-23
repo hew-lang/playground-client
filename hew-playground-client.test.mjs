@@ -448,7 +448,7 @@ test('run preserves native execution_mode reported by the server', async () => {
         stdout: 'ok\n',
         stderr: '',
         elapsed_ms: 8,
-        compiler_version: '0.11.1',
+        compiler_version: '0.11.2',
         execution_mode: 'native',
       }),
   });
@@ -661,11 +661,11 @@ test('test supports list_only discovery and forwards test and compiler_version o
   const discovery = await client.test({
     source: '#[test] fn works() {}',
     list_only: true,
-    compiler_version: '0.11.1',
+    compiler_version: '0.11.2',
   });
   assert.deepEqual(JSON.parse(requests[0].init.body), {
     source: '#[test] fn works() {}',
-    compiler_version: '0.11.1',
+    compiler_version: '0.11.2',
     list_only: true,
   });
   assert.equal(discovery.success, true);
@@ -803,7 +803,7 @@ test('test rejects empty NDJSON streams and non-TestEvent JSON payloads on HTTP 
 
 test('mergeHeaders normalizes case, handles all Iterable types, and snapshots single-use iterators', async () => {
   const captured = [];
-  const sourceHeaders = new Headers({ 'x-api-key': 'secret', 'X-Hew-Version': '0.11.1' });
+  const sourceHeaders = new Headers({ 'x-api-key': 'secret', 'X-Hew-Version': '0.11.2' });
   const clientFromIterator = new HewPlaygroundClient({
     baseUrl: 'https://playground.example',
     headers: sourceHeaders.entries(),
@@ -817,7 +817,7 @@ test('mergeHeaders normalizes case, handles all Iterable types, and snapshots si
   await clientFromIterator.createShare('fn main() {}');
   assert.deepEqual(captured[0], {
     'x-api-key': 'secret',
-    'x-hew-version': '0.11.1',
+    'x-hew-version': '0.11.2',
     'content-type': 'application/json',
   });
   assert.deepEqual(captured[1], captured[0]);
@@ -853,7 +853,7 @@ test('mergeHeaders normalizes case, handles all Iterable types, and snapshots si
     headers: new Set([['X-Set-Header', 'from-set']]),
     fetch: async (_url, init) => {
       capturedSetAndCustom.push(init.headers);
-      return mockJsonResponse({ default_version: '0.11.1', available_versions: ['0.11.1'] });
+      return mockJsonResponse({ default_version: '0.11.2', available_versions: ['0.11.2'] });
     },
   });
   await clientSet.listVersions();
@@ -864,7 +864,7 @@ test('mergeHeaders normalizes case, handles all Iterable types, and snapshots si
     headers: customIterable,
     fetch: async (_url, init) => {
       capturedSetAndCustom.push(init.headers);
-      return mockJsonResponse({ default_version: '0.11.1', available_versions: ['0.11.1'] });
+      return mockJsonResponse({ default_version: '0.11.2', available_versions: ['0.11.2'] });
     },
   });
   await clientCustom.listVersions();
@@ -875,7 +875,7 @@ test('mergeHeaders normalizes case, handles all Iterable types, and snapshots si
     headers: customForEachOnly,
     fetch: async (_url, init) => {
       capturedSetAndCustom.push(init.headers);
-      return mockJsonResponse({ default_version: '0.11.1', available_versions: ['0.11.1'] });
+      return mockJsonResponse({ default_version: '0.11.2', available_versions: ['0.11.2'] });
     },
   });
   await clientForEachOnly.listVersions();
@@ -886,7 +886,7 @@ test('forwards explicit empty compiler_version and treats per-request null as se
   const bodies = [];
   const pinnedClient = new HewPlaygroundClient({
     baseUrl: 'https://playground.example',
-    compilerVersion: '0.11.1',
+    compilerVersion: '0.11.2',
     fetch: async (_url, init) => {
       bodies.push(JSON.parse(init.body));
       return mockJsonResponse({ success: true, stdout: '', stderr: '', elapsed_ms: 1 });

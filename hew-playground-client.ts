@@ -2,7 +2,7 @@ export type ExecutionMode = 'native' | 'wasm';
 
 export interface RunRequest {
   source: string;
-  /** Request a specific compiler version (e.g. `"0.11.1"`). Overrides the
+  /** Request a specific compiler version (e.g. `"0.11.2"`). Overrides the
    *  client-wide `compilerVersion` and the `X-Hew-Version` header. Pass `null`
    *  to explicitly select the server default even when the client pins a version. */
   compiler_version?: string | null;
@@ -30,7 +30,7 @@ export interface RunResponse {
 
 export interface TestRequest {
   source: string;
-  /** Request a specific compiler version (e.g. `"0.11.1"`). Overrides the
+  /** Request a specific compiler version (e.g. `"0.11.2"`). Overrides the
    *  client-wide `compilerVersion` and the `X-Hew-Version` header. Pass `null`
    *  to explicitly select the server default even when the client pins a version. */
   compiler_version?: string | null;

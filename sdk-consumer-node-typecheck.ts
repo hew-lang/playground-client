@@ -44,7 +44,7 @@ const mode: ExecutionMode = 'native';
 const runResult = await client.run({ source: 'fn main() {}', compiler_version: null, execution_mode: mode });
 const executedMode: 'native' | undefined = runResult.execution_mode;
 
-await client.createShare({ source: 'fn main() { println(1); }', compiler_version: '0.11.1' });
+await client.createShare({ source: 'fn main() { println(1); }', compiler_version: '0.11.2' });
 
 const [example] = await client.listExamples();
 if (!example) {
